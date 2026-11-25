@@ -16,6 +16,11 @@ input,textarea{font:inherit;font-size:1rem;padding:10px 12px;border:1px solid va
 .btn{font:inherit;font-size:1.05rem;font-weight:700;padding:13px 16px;border-radius:12px;border:0;cursor:pointer;text-align:center;text-decoration:none;display:block}
 .primary{background:var(--green);color:#fff}.ig{background:linear-gradient(45deg,#f09433,#dc2743 55%,#bc1888);color:#fff}.g{background:#fff;color:#1a73e8;border:1px solid var(--line)}
 .code{font-family:"Baloo 2",monospace;font-size:2.4rem;font-weight:800;letter-spacing:.2em;text-align:center;color:var(--green);background:var(--gold-soft);border:2px dashed var(--gold);border-radius:14px;padding:6px}
+.cats{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.cats::-webkit-scrollbar{display:none}
+.cats button{flex:none;font:inherit;font-size:.9rem;font-weight:600;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:#fbfcf8;color:var(--fg);cursor:pointer}
+.cats button[aria-selected=true]{background:var(--green);color:#fff;border-color:var(--green)}
+.picked{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-radius:12px;background:var(--gold-soft)}
+.picked span{font-size:.9rem;font-weight:600;background:#fff;border-radius:99px;padding:3px 10px;border:1px solid var(--gold)}
 .muted{color:var(--muted);font-size:.9rem;margin:0}.err{color:var(--red)}.center{text-align:center}
 </style></head>
 <body><main>
@@ -25,8 +30,11 @@ input,textarea{font:inherit;font-size:1rem;padding:10px 12px;border:1px solid va
   <p class="muted center" id="offer">रिव्यू दें और अभी के बिल पर छूट पाएँ 🎁</p>
   <div class="card">
     <div class="stars" id="stars" role="radiogroup" aria-label="स्टार"></div>
+    <div><b>नीचे से चुनें</b> <span class="muted" id="selc">(जितने पसंद हों दबाएँ, ज़्यादा से ज़्यादा 8)</span></div>
+    <div class="cats" id="cats" role="tablist"></div>
     <div class="tags" id="tags"></div>
-    <label>अपनी बात लिखें (ज़रूरी नहीं)<textarea id="txt" maxlength="600" placeholder="जैसे: सरसों का तेल बिल्कुल घानी जैसा, खुशबू कमाल की!"></textarea></label>
+    <div class="picked" id="picked" hidden></div>
+    <label>अपनी बात लिखें (ज़रूरी नहीं)<textarea id="txt" maxlength="600" placeholder="जैसे: हमारा पूरा परिवार अब यही तेल इस्तेमाल करता है"></textarea></label>
     <label>आपका नाम<input id="nm" maxlength="60" autocomplete="name"></label>
     <label>मोबाइल नंबर (छूट के लिए)<input id="ph" maxlength="15" inputmode="tel" autocomplete="tel"></label>
     <p class="err" id="err" hidden></p>
@@ -52,12 +60,22 @@ import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/fireb
 import { firebaseConfig } from "./config.js";
 const db=getFirestore(initializeApp(firebaseConfig));
 const $=s=>document.querySelector(s);
-const TAGS=["ऑसम 👌","माइंड ब्लोइंग 🤩","एकदम शुद्ध 💯","घानी जैसी खुशबू 🌼","अच्छी सर्विस 🙏","दाम सही 👍"];
-let rating=5, tags=new Set(), pub={};
+const CATS={"⭐ तारीफ़": ["ऑसम 👌", "माइंड ब्लोइंग 🤩", "एकदम बढ़िया 👍", "लाजवाब ✨", "सबसे बेस्ट तेल 🏆", "10 में से 10 💯", "दिल खुश हो गया 😊", "उम्मीद से बढ़कर निकला 🙌", "शानदार क्वालिटी 🌟", "एक बार लिया, अब हमेशा यही लेंगे", "सबको सलाह दूँगा 👍", "Highly recommended 👍", "Excellent quality 🌟", "कमाल का तेल 🔥", "Best oil in Gurugram 🏆"], "💯 शुद्धता": ["एकदम शुद्ध 💯", "100% शुद्ध तेल", "कोई मिलावट नहीं ✅", "बिना केमिकल का तेल", "असली कच्ची घानी का तेल", "रिफ़ाइंड नहीं, असली तेल", "सरसों की असली झांस 🌼", "Pure & natural 🌿", "No adulteration ✅", "शुद्धता पर पूरा भरोसा 🙏", "बाज़ार के तेल से कहीं बेहतर", "आँखों के सामने निकला हुआ तेल"], "🌾 कोल्ड प्रेस": ["असली कोल्ड प्रेस्ड तेल", "लकड़ी की घानी जैसा 🪵", "पुराने ज़माने वाला असली तेल", "तेल का रंग एकदम नेचुरल", "गाढ़ा और असली तेल", "ताज़ा निकला हुआ तेल", "Cold pressed quality 👌", "पोषक तत्व बचे रहते हैं", "धीमी घानी का असली स्वाद", "प्रोसेसिंग नहीं, सीधा बीज से तेल", "Fresh & natural oil"], "😋 स्वाद": ["खाने का स्वाद बढ़ गया 😋", "सब्ज़ी का स्वाद दोगुना", "अचार के लिए एकदम सही 🥭", "पराठे और पूरी लाजवाब", "तड़का बहुत बढ़िया लगता है", "घर का खाना और स्वादिष्ट", "बच्चों को भी पसंद आया 👧", "माँ के हाथ वाला स्वाद", "Tastes amazing 😋", "तेल कम लगता है, स्वाद ज़्यादा", "पकौड़े एकदम कुरकुरे बने", "दाल-सब्ज़ी में जान आ गई", "Perfect for cooking 🍳"], "💪 सेहत": ["सेहत के लिए बढ़िया 💪", "दिल के लिए अच्छा तेल ❤️", "पेट हल्का रहता है", "डॉक्टर ने भी यही बताया 👨‍⚕️", "बालों में लगाने से फ़ायदा 💆", "मालिश के लिए बेहतरीन", "जोड़ों के दर्द में आराम", "त्वचा के लिए अच्छा ✨", "बच्चों की मालिश के लिए बढ़िया 👶", "बुज़ुर्गों के लिए भरोसेमंद", "Healthy choice for family 💚", "अलसी का तेल सेहत का खज़ाना"], "🙏 सर्विस": ["अच्छी सर्विस 🙏", "बहुत अच्छा व्यवहार 😊", "समय पर डिलीवरी 🚚", "घर तक पहुँचाया, धन्यवाद", "सही जानकारी दी", "पैकिंग बहुत अच्छी 📦", "पूरी मात्रा मिली, कोई कमी नहीं", "WhatsApp पर तुरंत जवाब", "बिल तुरंत WhatsApp पर मिल गया", "दुकान साफ़-सुथरी", "Great service 🙏", "भरोसेमंद दुकान", "स्टाफ़ बहुत मददगार", "ऑर्डर करना आसान"], "💰 दाम": ["दाम एकदम सही 👍", "क्वालिटी के हिसाब से सस्ता", "पैसे वसूल 💰", "कोई छिपा खर्च नहीं", "ईमानदार दाम", "Value for money 💰", "बाज़ार से बेहतर रेट", "छूट देकर खुश कर दिया 🎁", "सही तौल, सही दाम ⚖️", "थोक में भी अच्छा रेट"], "👨‍👩‍👧 भरोसा": ["पूरा परिवार यही तेल खाता है", "सालों से ग्राहक हैं", "रिश्तेदारों को भी बताया", "मोहल्ले में सबसे अच्छा तेल", "भरोसे का दूसरा नाम Divine", "हमेशा एक जैसी क्वालिटी", "Divine Elite Oil = शुद्धता", "हर बार उतना ही अच्छा", "Family's favourite 💚", "यहाँ से लेकर सुकून मिलता है", "नारियल तेल भी बहुत बढ़िया 🥥", "मूंगफली तेल का जवाब नहीं 🥜", "तिल का तेल एकदम असली"]};
+let rating=5, tags=new Set(), pub={}, cat=Object.keys(CATS)[0];
 function drawStars(){ $("#stars").innerHTML=[1,2,3,4,5].map(n=>`<button type="button" role="radio" aria-checked="${n===rating}" aria-label="${n} स्टार" class="${n<=rating?"on":""}" data-n="${n}">★</button>`).join(""); document.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{ rating=+b.dataset.n; drawStars(); }); }
 drawStars();
-$("#tags").innerHTML=TAGS.map(t=>`<button type="button" aria-pressed="false">${t}</button>`).join("");
-document.querySelectorAll("#tags button").forEach(b=>b.onclick=()=>{ const on=b.getAttribute("aria-pressed")!=="true"; b.setAttribute("aria-pressed",on); on?tags.add(b.textContent):tags.delete(b.textContent); });
+const MAXT=8;
+function drawTags(){
+  $("#cats").innerHTML=Object.keys(CATS).map(k=>`<button type="button" role="tab" aria-selected="${k===cat}">${k}</button>`).join("");
+  document.querySelectorAll("#cats button").forEach(b=>b.onclick=()=>{ cat=b.textContent; drawTags(); });
+  $("#tags").innerHTML=CATS[cat].map(t=>`<button type="button" aria-pressed="${tags.has(t)}">${t}</button>`).join("");
+  document.querySelectorAll("#tags button").forEach(b=>b.onclick=()=>{ const t=b.textContent;
+    if(tags.has(t)) tags.delete(t); else { if(tags.size>=MAXT){ $("#selc").textContent="(ज़्यादा से ज़्यादा 8 चुन सकते हैं)"; return; } tags.add(t); }
+    drawTags(); });
+  const pk=$("#picked"); pk.hidden=!tags.size; pk.innerHTML=[...tags].map(t=>`<span>${t}</span>`).join("");
+  $("#selc").textContent=tags.size?`(${tags.size} चुने, ज़्यादा से ज़्यादा 8)`:"(जितने पसंद हों दबाएँ, ज़्यादा से ज़्यादा 8)";
+}
+drawTags();
 const discText=()=>pub.discType==="flat"?"₹"+(pub.discValue||50)+" की छूट":(pub.discValue||5)+"% छूट";
 getDoc(doc(db,"meta","public")).then(s=>{ pub=s.exists()?s.data():{}; $("#offer").textContent="रिव्यू दें और अभी के बिल पर "+discText()+" पाएँ 🎁"; }).catch(()=>{});
 const newCode=()=>{ const A="ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let c=""; for(let i=0;i<6;i++) c+=A[Math.floor(Math.random()*A.length)]; return c; };
