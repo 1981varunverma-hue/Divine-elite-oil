@@ -162,7 +162,7 @@ function toast(msg){ const t=document.createElement("div"); t.className="toast";
 
 // ---------- data layer (db when available, otherwise this browser) ----------
 const COLLS = ["customers","products","bills","purchases","settings"];
-const state = { customers:[], products:[], bills:[], purchases:[], users:[], settings:{}, mode:"loading" };
+const state = { customers:[], products:[], bills:[], purchases:[], users:[], reviews:[], settings:{}, mode:"loading" };
 let db = null;
 const LS = "divine-oil-v1";
 function lsLoad(){ try{ const j=JSON.parse(localStorage.getItem(LS)||"{}"); COLLS.forEach(c=>{ if(c==="settings") state.settings=j.settings||{}; else state[c]=j[c]||[]; }); }catch(e){} }
@@ -195,6 +195,7 @@ function subscribeData(){
   const fail=e=>{ toast("डेटा नहीं खुला: "+(e&&e.code||"")); };
   ["customers","products","bills","purchases","users"].forEach(c=>{ unsubs.push(FBX.onColl(c,docs=>{ state[c]=docs; done(c); },fail)); });
   unsubs.push(FBX.onDoc("settings/shop",d=>{ state.settings=d||{}; done("settings"); },fail));
+  unsubs.push(FBX.onColl("reviews",docs=>{ state.reviews=docs; if(state.mode==="db") render(); },()=>{}));
 }
 async function connect(){
   const F=FBX=await waitFB();
@@ -250,6 +251,14 @@ const isRet=b=>b&&b.type==="return";
 function nextCnNo(){ let max=0; state.bills.filter(isRet).forEach(b=>{ const m=String(b.no||"").match(/(\d+)\s*$/); if(m) max=Math.max(max,+m[1]); }); return "CN-"+String(max+1).padStart(4,"0"); }
 // absolute-value view of a credit note, for printing
 const absView=b=>isRet(b)?{...b,sub:Math.abs(b.sub||0),tax:Math.abs(b.tax||0),total:Math.abs(b.total||0),paid:Math.abs(b.paid||0),discount:Math.abs(b.discount||0)}:b;
+const REVIEW_URL="https://1981varunverma-hue.github.io/Divine-elite-oil/review.html";
+const reviewDiscText=()=>{ const s=S(); return s.revDiscType==="flat"?"₹"+(+s.revDiscValue||50)+" छूट":(+s.revDiscValue||5)+"% छूट"; };
+async function checkReviewCode(raw){ const code=String(raw||"").trim().toUpperCase(); if(code.length!==6){ toast("6 अक्षर का कोड डालें"); return null; }
+  let r=null; try{ r=await FBX.get("reviews/"+code); }catch(_){ toast("कोड जाँच नहीं पाए, इंटरनेट देखें"); return null; }
+  if(!r){ toast("यह कोड नहीं मिला"); return null; } if(r.used){ toast("यह कोड पहले इस्तेमाल हो चुका ("+(r.usedBill||"")+")"); return null; }
+  return {code,r}; }
+async function markReviewUsed(code,r,billNo,how){ try{ const {id:_x,...rd}=r; await FBX.set("reviews/"+code,{...rd,used:true,usedBill:billNo,usedHow:how,usedAt:Date.now(),usedBy:meName()}); }catch(_){ toast("रिव्यू कोड इस्तेमाल दर्ज नहीं हुआ"); } }
+const reviewDiscAmt=gross=>{ const s=S(); return r2(s.revDiscType==="flat"?Math.min(gross,+s.revDiscValue||50):gross*(+s.revDiscValue||5)/100); };
 function nextBillNo(){ const s=S(); let max=0; state.bills.filter(b=>!isRet(b)).forEach(b=>{ const m=String(b.no||"").match(/(\d+)\s*$/); if(m) max=Math.max(max,+m[1]); }); return s.prefix+String(max+1).padStart(4,"0"); }
 
 function billText(b0){
@@ -266,6 +275,7 @@ function billText(b0){
   else { L.push("*कुल राशि: "+inr(b.total)+"*");
   L.push("जमा: "+inr(b.paid||0)+" ("+(b.mode||"नकद")+")");
   const due=billDue(b); if(due>0) L.push("*बाकी: "+inr(due)+"*"); }
+  if(!ret&&b.reviewCode) L.push("⭐ रिव्यू छूट"+(b.reviewCashback>0?" (कैशबैक "+inr(b.reviewCashback)+" दिया)":"")+" · कोड "+b.reviewCode);
   L.push(""); L.push(s.footer);
   L.push(""); L.push("👉 हमसे जुड़ें (Instagram, Facebook, WhatsApp ग्रुप):"); L.push(LINKS_URL);
   return L.join("\n");
@@ -396,6 +406,7 @@ function viewBill(v){
   <section class="card">
     <div class="row">
       <label>छूट (₹)<input type="number" step="any" min="0" id="d_disc" inputmode="decimal" value="${esc(draft.discount||"")}" placeholder="0"></label>
+      <label>⭐ रिव्यू कोड${draft.reviewCode?` <b style="color:var(--accent)">✓ ${esc(draft.reviewCode)} लगा</b>`:""}<span style="display:flex;gap:6px"><input id="d_rcode" value="${esc(draft.reviewCode||"")}" placeholder="जैसे AB7K2Q" style="text-transform:uppercase;flex:1;min-width:0" maxlength="6"><button class="btn small" type="button" id="d_rgo" style="flex:none">लगाएँ</button></span></label>
       <label>जमा राशि (₹)<input type="number" step="any" min="0" id="d_paid" inputmode="decimal" value="${esc(draft.paid)}" placeholder="${esc(c.total)} (पूरा)"></label>
       <label>पेमेंट का तरीका<select id="d_mode">${MODES.map(m=>`<option ${m===draft.mode?"selected":""}>${m}</option>`).join("")}</select></label>
     </div>
@@ -424,6 +435,9 @@ function viewBill(v){
   $("#scanBtn").onclick=()=>openScanner();
   $("#addLine").onclick=()=>{ draft.items.push({name:"",qty:1,unit:"लीटर",rate:0,gst:5,kgPerL:0.91}); render(); const el=$("#i_name_"+(draft.items.length-1)); if(el) el.focus(); };
   $("#d_disc").oninput=e=>{ draft.discount=+e.target.value||0; refreshTotals(); };
+  $("#d_rgo").onclick=async()=>{ const ok=await checkReviewCode($("#d_rcode").value); if(!ok) return; const {code,r}=ok;
+    const gross=draft.items.reduce((a,it)=>a+lineAmt(it),0); if(gross<=0){ toast("पहले सामान डालें, फिर कोड लगाएँ"); return; }
+    draft.reviewCode=code; draft.reviewDoc=r; draft.discount=reviewDiscAmt(gross); toast("रिव्यू छूट लग गई: "+inr(draft.discount)+" ("+r.name+")"); render(); };
   $("#d_paid").oninput=e=>{ draft.paid=e.target.value; refreshTotals(); };
   $("#d_mode").onchange=e=>{ draft.mode=e.target.value; if(draft.mode==="उधार"){ draft.paid="0"; render(); } };
   $("#clearBill").onclick=()=>{ draft=freshDraft(); render(); };
@@ -458,10 +472,11 @@ async function saveBill(){
   const editing=!!draft.editId; const id=draft.editId||uid();
   const bill={ no:editing?draft.editNo:nextBillNo(), date:draft.date||today(), customerId:cid||"", customerName:cname||"नकद ग्राहक", customerPhone:cphone||"", customerGstin:(state.customers.find(x=>x.id===cid)||{}).gstin||"",
     items:items.map(it=>{ const pr=state.products.find(p=>p.name===String(it.name).trim())||{}; return {name:String(it.name).trim(),qty:+it.qty,unit:it.unit||"",rate:+it.rate,kgPerL:kgpl(it),gst:pr.gst!=null?+pr.gst:(+it.gst||0),hsn:pr.hsn||it.hsn||""}; }),
-    discount:+draft.discount||0, sub:c.sub, tax:c.tax, total:c.total, paid, mode:draft.mode, gstOn:!!s.gstOn, createdAt:editing?(draft.editCreatedAt||Date.now()):Date.now(), createdBy:editing?(draft.createdBy||""):meName() };
+    discount:+draft.discount||0, reviewCode:draft.reviewCode||"", sub:c.sub, tax:c.tax, total:c.total, paid, mode:draft.mode, gstOn:!!s.gstOn, createdAt:editing?(draft.editCreatedAt||Date.now()):Date.now(), createdBy:editing?(draft.createdBy||""):meName() };
   if(editing){ bill.editedAt=Date.now(); bill.editedBy=meName(); }
   await save("bills",id,bill);
-  draft=freshDraft(); toast(editing?"बिल बदल दिया गया":"बिल सेव हो गया");
+  if(draft.reviewCode&&draft.reviewDoc&&!editing) await markReviewUsed(draft.reviewCode,draft.reviewDoc,bill.no,"छूट");
+  draft=freshDraft(); render(); toast(editing?"बिल बदल दिया गया":"बिल सेव हो गया");
   openBill(id);
 }
 
@@ -484,6 +499,7 @@ function openBill(id){
     <div class="row">
       ${due>0?`<button class="btn" id="mpaid">पूरा पेमेंट मिल गया</button>`:""}
       ${!ret&&!isPartner()?`<button class="btn" id="mret">↩️ वापसी (माल लौटाया)</button>`:""}
+      ${!ret&&!isPartner()&&!b.reviewCode?`<button class="btn" id="mrev">⭐ रिव्यू कैशबैक</button>`:""}
       ${isAdmin()&&!ret?`<button class="btn" id="medit">बिल बदलें</button>`:""}${isAdmin()?`<button class="btn ghost danger" id="mdel">${confirmDel===id?"पक्का हटाएं?":(ret?"वापसी हटाएं":"बिल हटाएं")}</button>`:""}
     </div>
     ${rets.length?`<div class="notice">इस बिल पर वापसी: ${rets.map(r=>`<button class="btn small ghost" data-oret="${esc(r.id)}">${esc(r.no)} · ${inr(Math.abs(r.total))}</button>`).join(" ")}</div>`:""}
@@ -496,6 +512,15 @@ function openBill(id){
   $("#mpdf").onclick=()=>downloadPdf(b,$("#mpdf"));
   $("#mcopy").onclick=()=>{ const t=billText(b); navigator.clipboard.writeText(t).then(()=>toast("कॉपी हो गया")).catch(()=>{ const r=document.createRange(); r.selectNodeContents($("#rcpt")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast("टेक्स्ट चुन लिया, कॉपी करें"); }); };
   if($("#mret")) $("#mret").onclick=()=>openReturn(b.id);
+  if($("#mrev")) $("#mrev").onclick=()=>{ const box=document.createElement("div"); box.className="notice"; box.innerHTML=`<b>ग्राहक का रिव्यू कोड</b><div class="row" style="align-items:end"><label>कोड<input id="mrc" maxlength="6" style="text-transform:uppercase" placeholder="जैसे AB7K2Q"></label><button class="btn primary" type="button" id="mrgo" style="flex:none">लगाएँ</button></div>`;
+    $("#mrev").closest(".row").after(box); $("#mrev").remove(); $("#mrc").focus();
+    $("#mrgo").onclick=async()=>{ const ok=await checkReviewCode($("#mrc").value); if(!ok) return; const {code,r}=ok;
+      const s=S(); const gross=(b.items||[]).reduce((a,it)=>a+lineAmt(it),0); const amt=reviewDiscAmt(Math.max(0,gross-(+b.discount||0)));
+      const disc=r2((+b.discount||0)+amt); const c=calcBill(b.items||[],disc,!!b.gstOn,s.gstIncl);
+      const wasPaid=r2(+b.paid||0); const paid=Math.min(wasPaid,c.total); const cash=r2(wasPaid-paid);
+      await save("bills",b.id,{...b,discount:disc,sub:c.sub,tax:c.tax,total:c.total,paid,reviewCode:code,reviewCashback:cash,reviewDisc:amt});
+      await markReviewUsed(code,r,b.no,cash>0?"कैशबैक":"छूट");
+      toast(cash>0?"ग्राहक को ₹"+cash+" नकद वापस दें (कैशबैक)":"बिल में ₹"+amt+" की छूट लग गई"); openBill(b.id); }; };
   root.querySelectorAll("[data-oret]").forEach(x=>x.onclick=()=>openBill(x.dataset.oret));
   if($("#mpaid")) $("#mpaid").onclick=async()=>{ await save("bills",b.id,{...b,paid:b.total,mode:b.mode==="उधार"?"नकद":b.mode}); toast("पेमेंट दर्ज हो गया"); openBill(b.id); };
   if($("#medit")) $("#medit").onclick=()=>{ root.innerHTML=""; confirmDel=null;
@@ -789,12 +814,26 @@ function viewReport(v){
 }
 
 // ---------- Customers ----------
+function openReviews(){
+  const rv=state.reviews.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const root=$("#modalRoot");
+  root.innerHTML=`<div class="modal" id="mbg"><div class="card" role="dialog" aria-label="रिव्यू">
+    <div class="row" style="align-items:center"><h3>⭐ ग्राहकों के रिव्यू</h3><button class="btn ghost small" id="rvx" style="flex:none">बंद करें</button></div>
+    <p class="muted" style="margin:0;font-size:.9rem">ग्राहक रिव्यू QR स्कैन करके रिव्यू देता है और उसे कोड मिलता है। उसी बिल में “⭐ रिव्यू कोड” डालें (${esc(reviewDiscText())})। बिल सेव हो चुका हो तो बिल खोलकर “⭐ रिव्यू कैशबैक” दबाएँ।</p>
+    <div class="list">${rv.length?rv.map(r=>`<div class="li"><div class="main"><b>${"★".repeat(+r.rating||0)}<span class="muted">${"☆".repeat(5-(+r.rating||0))}</span> ${esc(r.name||"")}</b>
+      <span style="font-size:.9rem">${esc(r.text||"")}</span><span class="muted" style="font-size:.8rem">${esc((r.tags||[]).join(" · "))} · ${esc(r.phone||"")} · ${r.createdAt?esc(new Date(r.createdAt).toLocaleDateString("en-IN")):""}</span></div>
+      <div style="text-align:right"><span class="pill ${r.used?"ok":"due"}">${esc(r.id)}</span><br><span class="muted" style="font-size:.75rem">${r.used?"इस्तेमाल: "+esc(r.usedBill||""):"अभी बाकी"}</span>
+      ${r.phone?`<br><a class="btn small wa" target="_blank" rel="noopener" href="${esc(waLink(r.phone,"नमस्ते "+(r.name||"")+" जी, Divine Elite Oil को रिव्यू देने के लिए धन्यवाद 🙏 आपसे फिर मिलने का इंतज़ार रहेगा।"))}">धन्यवाद भेजें</a>`:""}</div></div>`).join(""):`<div class="empty">अभी कोई रिव्यू नहीं। सेटिंग में “रिव्यू QR” का पोस्टर दुकान पर लगाएँ।</div>`}</div>
+  </div></div>`;
+  $("#rvx").onclick=()=>{ root.innerHTML=""; };
+}
 function viewCustomers(v){
   const q=ui.custQ.trim().toLowerCase();
   let cs=state.customers.map(c=>({...c,st:custStats(c.id)}));
   if(q){ const qd=q.replace(/\D/g,""); cs=cs.filter(c=>(c.name+" "+(c.phone||"")+" "+(c.address||"")+" "+(c.gstin||"")+" "+(c.note||"")).toLowerCase().includes(q)||(qd.length>=4&&String(c.phone||"").replace(/\D/g,"").includes(qd))); }
   cs.sort((a,b)=>b.st.due-a.st.due||a.name.localeCompare(b.name));
-  v.innerHTML=`<div class="row" style="align-items:center"><h2>ग्राहक</h2><button class="btn primary" id="addC" style="flex:none">+ नया ग्राहक</button></div>
+  const rv=state.reviews; const avg=rv.length?(rv.reduce((a,r)=>a+(+r.rating||0),0)/rv.length).toFixed(1):"";
+  v.innerHTML=`<div class="row" style="align-items:center"><h2>ग्राहक</h2><button class="btn" id="revBtn" style="flex:none">⭐ रिव्यू ${rv.length?`(${rv.length} · ${avg}★)`:""}</button><button class="btn primary" id="addC" style="flex:none">+ नया ग्राहक</button></div>
   <section class="card">
     <label>ग्राहक खोजें<input id="cq" value="${esc(ui.custQ)}" placeholder="नाम, GSTIN, पता या फ़ोन नंबर"></label>
     <div class="list">${cs.length?cs.map(c=>`<div class="li">
@@ -808,6 +847,7 @@ function viewCustomers(v){
         <button class="btn small ghost" data-edit="${esc(c.id)}">बदलें</button>
       </div></div>`).join(""):`<div class="empty">${q?"कोई ग्राहक नहीं मिला":"अभी कोई ग्राहक नहीं है। बिल बनाते समय नाम और नंबर डालेंगे तो ग्राहक यहाँ अपने आप जुड़ जाएगा, या ऊपर “+ नया ग्राहक” दबाएं।"}</div>`}</div>
   </section>`;
+  $("#revBtn").onclick=()=>openReviews();
   $("#cq").oninput=e=>{ ui.custQ=e.target.value; render(); };
   $("#addC").onclick=()=>editCustomer(null);
   v.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editCustomer(b.dataset.edit));
@@ -1019,6 +1059,14 @@ function viewSettings(v){
     <div><button class="btn primary" type="submit">सेव करें</button></div>
   </form>
   <section class="card">
+    <h3>⭐ रिव्यू पर छूट</h3>
+    <div class="row"><label>छूट का तरीका<select id="rv_type"><option value="pct" ${S().revDiscType!=="flat"?"selected":""}>प्रतिशत (%)</option><option value="flat" ${S().revDiscType==="flat"?"selected":""}>सीधे रुपये (₹)</option></select></label>
+      <label>कितनी<input type="number" min="0" step="any" id="rv_val" value="${esc(S().revDiscValue||5)}"></label></div>
+    <label>Google रिव्यू का लिंक (अगर है)<input id="rv_g" value="${esc(S().googleReviewUrl||"")}" placeholder="https://g.page/r/..."></label>
+    <div class="row"><button class="btn primary" type="button" id="rv_save">सेव करें</button><button class="btn" type="button" id="rv_qr">रिव्यू QR पोस्टर</button></div>
+    <p class="muted" style="margin:0;font-size:.85rem">रिव्यू पेज: ${esc(REVIEW_URL)}</p>
+  </section>
+  <section class="card">
     <h3>पूरा बैकअप</h3>
     <p class="muted" style="margin:0;font-size:.9rem">सारे ग्राहक, बिल, खरीद, प्रोडक्ट और सेटिंग एक फ़ाइल में। इसे हर हफ़्ते या महीने डाउनलोड करके Google Drive या ईमेल में रख लें। अभी कुल ${state.customers.length+state.bills.length+state.purchases.length+state.products.length} एंट्री हैं।</p>
     <div class="row"><button class="btn primary" id="bkDown" type="button">पूरा बैकअप डाउनलोड करें</button>
@@ -1043,6 +1091,11 @@ function viewSettings(v){
   $("#s_gst").onchange=e=>{ $("#gstrow").hidden=!e.target.checked; };
   $("#sf").onsubmit=async e=>{ e.preventDefault(); await save("settings",null,{name:$("#s_name").value.trim()||"Divine Elite Oil",phone:$("#s_phone").value.trim(),address:$("#s_addr").value.trim(),prefix:$("#s_prefix").value.trim()||"DEO-",footer:$("#s_footer").value.trim(),gstOn:$("#s_gst").checked,gstin:$("#s_gstin").value.trim(),gstIncl:$("#s_incl").value==="1"}); toast("सेटिंग सेव हो गई"); };
   $("#stickBtn").onclick=()=>openStickers();
+  $("#rv_save").onclick=async()=>{ const t=$("#rv_type").value, val=+$("#rv_val").value||0, g=$("#rv_g").value.trim();
+    if(g&&!/^https:\/\//.test(g)){ toast("Google लिंक https:// से शुरू होना चाहिए"); return; }
+    await save("settings",null,{revDiscType:t,revDiscValue:val,googleReviewUrl:g});
+    try{ await FBX.set("meta/public",{discType:t,discValue:val,googleUrl:g}); toast("रिव्यू सेटिंग सेव हो गई"); }catch(_){ toast("रिव्यू पेज तक सेटिंग नहीं पहुँची (Rules देखें)"); } };
+  $("#rv_qr").onclick=async()=>{ const b=$("#rv_qr"); b.disabled=true; try{ await makeReviewPoster(); }catch(_){ toast("पोस्टर नहीं बना, इंटरनेट देखें"); } b.disabled=false; };
   $("#addP").onclick=()=>editProduct(null);
   $("#bkDown").onclick=async()=>{
     const data={app:"divine-elite-oil-billing",version:1,exportedAt:new Date().toISOString(),settings:state.settings,customers:state.customers,products:state.products,bills:state.bills,purchases:state.purchases};
@@ -1118,6 +1171,23 @@ function addScanned(p,qty,unit){
   const ex=draft.items.find(it=>it.pid===p.id&&it.unit===unit&&+it.rate===+p.rate);
   if(ex) ex.qty=r2((+ex.qty||0)+qty);
   else { const blank=draft.items.findIndex(it=>!String(it.name).trim()); const it={name:p.name,pid:p.id,qty,unit,rate:+p.rate||0,kgPerL:prodKgpl(p),gst:p.gst!=null?+p.gst:5,hsn:p.hsn||""}; if(blank>=0) draft.items[blank]=it; else draft.items.push(it); }
+}
+async function makeReviewPoster(){
+  const img=await qrDataUrl(REVIEW_URL);
+  const host=document.createElement("div"); host.style.cssText="position:fixed;left:-10000px;top:0";
+  host.innerHTML=`<div style="width:794px;height:1123px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;font-family:Mukta,'Noto Sans Devanagari',Arial,sans-serif;text-align:center;border:14px solid #1d5e2c;box-sizing:border-box">
+    <img src="${LOGO_URL}" style="width:520px;height:auto">
+    <div style="font-size:52px;font-weight:800;color:#0b3d10;line-height:1.1">हमारा तेल कैसा लगा?</div>
+    <div style="font-size:64px;color:#e3a917;letter-spacing:8px">★★★★★</div>
+    <img src="${img}" style="width:400px;height:400px;image-rendering:pixelated">
+    <div style="font-size:36px;font-weight:700;color:#16301c">स्कैन करें, रिव्यू दें</div>
+    <div style="font-size:40px;font-weight:800;color:#fff;background:#b3261e;border-radius:16px;padding:10px 28px">इसी बिल पर ${esc(reviewDiscText())} 🎁</div></div>`;
+  document.body.appendChild(host);
+  await Promise.all([...host.querySelectorAll("img")].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r;})));
+  try{ await document.fonts.ready; }catch(_){}
+  const canvas=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:"#ffffff",logging:false}); host.remove();
+  const pdf=new window.jspdf.jsPDF({unit:"mm",format:"a4",compress:true}); pdf.addImage(canvas.toDataURL("image/jpeg",0.92),"JPEG",0,0,210,297);
+  await saveFile("Divine_review_QR.pdf",pdf.output("blob"),{share:true,text:"Divine Elite Oil रिव्यू QR"});
 }
 let scanStop=null;
 async function openScanner(){

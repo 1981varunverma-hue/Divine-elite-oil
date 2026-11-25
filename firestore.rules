@@ -53,6 +53,27 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     // Photo/PDF of each purchase bill, kept small enough for one document.
+    // Public settings the review page reads (discount, Google link).
+    match /meta/public {
+      allow get: if true;
+      allow write: if isAdmin();
+    }
+    // Customers leave reviews without logging in; the 6-letter document id is their discount code.
+    match /reviews/{code} {
+      allow create: if code.size() == 6
+        && request.resource.data.keys().hasOnly(['rating', 'tags', 'text', 'name', 'phone', 'createdAt', 'used'])
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && request.resource.data.tags is list && request.resource.data.tags.size() <= 8
+        && request.resource.data.text is string && request.resource.data.text.size() <= 600
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60
+        && request.resource.data.phone is string && request.resource.data.phone.size() <= 15
+        && request.resource.data.used == false;
+      allow get: if isUser();
+      allow list: if isUser();
+      allow update: if canBill();
+      allow delete: if isAdmin();
+    }
     match /purchaseFiles/{id} {
       allow read: if isUser();
       allow write: if isAdmin();

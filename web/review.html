@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Divine Elite Oil · रिव्यू</title><meta name="theme-color" content="#1d5e2c"><link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Mukta:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#f4f7ef;--card:#fff;--line:#dfe7d4;--fg:#16301c;--muted:#5b6d5c;--green:#1d5e2c;--gold:#c8961c;--gold-soft:#f7ecc8;--red:#b3261e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Mukta,system-ui,sans-serif;font-size:17px;line-height:1.45}
+main{max-width:480px;margin:0 auto;padding:20px max(16px,env(safe-area-inset-left)) 40px;display:flex;flex-direction:column;gap:16px}
+.logo{display:block;width:min(260px,75%);margin:0 auto;background:#fff;border-radius:14px;padding:8px 12px}
+h1{font-family:"Baloo 2",Mukta,sans-serif;font-size:1.6rem;margin:0;text-align:center;color:var(--green)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.stars{display:flex;justify-content:center;gap:6px}.stars button{font-size:2.6rem;line-height:1;background:none;border:0;cursor:pointer;color:#d8d2bf;padding:0 2px}.stars button.on{color:#e3a917}
+.tags{display:flex;flex-wrap:wrap;gap:8px}.tags button{font:inherit;font-size:.95rem;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:#fff;color:var(--fg);cursor:pointer}.tags button[aria-pressed=true]{background:var(--gold-soft);border-color:var(--gold);font-weight:700}
+label{display:flex;flex-direction:column;gap:4px;font-size:.9rem;color:var(--muted)}
+input,textarea{font:inherit;font-size:1rem;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fbfcf8;color:var(--fg)}textarea{min-height:90px}
+.btn{font:inherit;font-size:1.05rem;font-weight:700;padding:13px 16px;border-radius:12px;border:0;cursor:pointer;text-align:center;text-decoration:none;display:block}
+.primary{background:var(--green);color:#fff}.ig{background:linear-gradient(45deg,#f09433,#dc2743 55%,#bc1888);color:#fff}.g{background:#fff;color:#1a73e8;border:1px solid var(--line)}
+.code{font-family:"Baloo 2",monospace;font-size:2.4rem;font-weight:800;letter-spacing:.2em;text-align:center;color:var(--green);background:var(--gold-soft);border:2px dashed var(--gold);border-radius:14px;padding:6px}
+.muted{color:var(--muted);font-size:.9rem;margin:0}.err{color:var(--red)}.center{text-align:center}
+</style></head>
+<body><main>
+<img class="logo" src="logo.png" alt="Divine Elite Oil">
+<div id="form">
+  <h1>आपको हमारा तेल कैसा लगा?</h1>
+  <p class="muted center" id="offer">रिव्यू दें और अभी के बिल पर छूट पाएँ 🎁</p>
+  <div class="card">
+    <div class="stars" id="stars" role="radiogroup" aria-label="स्टार"></div>
+    <div class="tags" id="tags"></div>
+    <label>अपनी बात लिखें (ज़रूरी नहीं)<textarea id="txt" maxlength="600" placeholder="जैसे: सरसों का तेल बिल्कुल घानी जैसा, खुशबू कमाल की!"></textarea></label>
+    <label>आपका नाम<input id="nm" maxlength="60" autocomplete="name"></label>
+    <label>मोबाइल नंबर (छूट के लिए)<input id="ph" maxlength="15" inputmode="tel" autocomplete="tel"></label>
+    <p class="err" id="err" hidden></p>
+    <button class="btn primary" id="go">रिव्यू भेजें और छूट पाएँ</button>
+  </div>
+</div>
+<div id="done" hidden>
+  <h1>धन्यवाद! 🙏</h1>
+  <div class="card">
+    <p class="center" style="margin:0">आपका छूट कोड (<b id="discTxt"></b>)</p>
+    <div class="code" id="code"></div>
+    <p class="center" style="margin:0"><b>यह कोड काउंटर पर दिखाएँ।</b> आपके अभी के बिल में छूट लगेगी या उतने पैसे वापस (कैशबैक) मिलेंगे। एक कोड एक बार चलेगा।</p>
+    <button class="btn ig" id="story">📸 Instagram स्टोरी में शेयर करें</button>
+    <p class="muted center">स्टोरी में <b>@divineeliteoil</b> को टैग ज़रूर करें</p>
+    <a class="btn g" id="gbtn" target="_blank" rel="noopener" hidden>⭐ Google पर भी रिव्यू लिखें</a>
+    <a class="btn g" href="links.html">Instagram · Facebook · WhatsApp ग्रुप</a>
+  </div>
+</div>
+</main>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "./config.js";
+const db=getFirestore(initializeApp(firebaseConfig));
+const $=s=>document.querySelector(s);
+const TAGS=["ऑसम 👌","माइंड ब्लोइंग 🤩","एकदम शुद्ध 💯","घानी जैसी खुशबू 🌼","अच्छी सर्विस 🙏","दाम सही 👍"];
+let rating=5, tags=new Set(), pub={};
+function drawStars(){ $("#stars").innerHTML=[1,2,3,4,5].map(n=>`<button type="button" role="radio" aria-checked="${n===rating}" aria-label="${n} स्टार" class="${n<=rating?"on":""}" data-n="${n}">★</button>`).join(""); document.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{ rating=+b.dataset.n; drawStars(); }); }
+drawStars();
+$("#tags").innerHTML=TAGS.map(t=>`<button type="button" aria-pressed="false">${t}</button>`).join("");
+document.querySelectorAll("#tags button").forEach(b=>b.onclick=()=>{ const on=b.getAttribute("aria-pressed")!=="true"; b.setAttribute("aria-pressed",on); on?tags.add(b.textContent):tags.delete(b.textContent); });
+const discText=()=>pub.discType==="flat"?"₹"+(pub.discValue||50)+" की छूट":(pub.discValue||5)+"% छूट";
+getDoc(doc(db,"meta","public")).then(s=>{ pub=s.exists()?s.data():{}; $("#offer").textContent="रिव्यू दें और अभी के बिल पर "+discText()+" पाएँ 🎁"; }).catch(()=>{});
+const newCode=()=>{ const A="ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let c=""; for(let i=0;i<6;i++) c+=A[Math.floor(Math.random()*A.length)]; return c; };
+$("#go").onclick=async()=>{
+  const name=$("#nm").value.trim(), phone=$("#ph").value.replace(/[^\d+]/g,"").slice(0,15), text=$("#txt").value.trim().slice(0,600), err=$("#err");
+  if(!name){ err.hidden=false; err.textContent="अपना नाम लिखें"; return; }
+  if(phone.replace(/\D/g,"").length<10){ err.hidden=false; err.textContent="10 अंक का मोबाइल नंबर लिखें"; return; }
+  err.hidden=true; const btn=$("#go"); btn.disabled=true; btn.textContent="भेज रहे हैं…";
+  const data={rating,tags:[...tags],text,name:name.slice(0,60),phone,createdAt:Date.now(),used:false};
+  for(let i=0;i<4;i++){ const code=newCode();
+    try{ await setDoc(doc(db,"reviews",code),data); return done(code,data); }catch(e){ if(i===3){ err.hidden=false; err.textContent="भेज नहीं पाए, इंटरनेट देखकर फिर कोशिश करें"; btn.disabled=false; btn.textContent="रिव्यू भेजें और छूट पाएँ"; } } }
+};
+function done(code,data){
+  $("#form").hidden=true; $("#done").hidden=false; $("#code").textContent=code; $("#discTxt").textContent=discText();
+  if(pub.googleUrl){ const g=$("#gbtn"); g.href=pub.googleUrl; g.hidden=false; }
+  $("#story").onclick=()=>shareStory(data);
+  window.scrollTo(0,0);
+}
+function wrap(ctx,text,maxW){ const words=text.split(/\s+/); const lines=[]; let l=""; for(const w of words){ const t=l?l+" "+w:w; if(ctx.measureText(t).width>maxW&&l){ lines.push(l); l=w; } else l=t; } if(l) lines.push(l); return lines; }
+async function shareStory(d){
+  const c=document.createElement("canvas"); c.width=1080; c.height=1920; const x=c.getContext("2d");
+  const g=x.createLinearGradient(0,0,0,1920); g.addColorStop(0,"#0f3d1a"); g.addColorStop(1,"#1d5e2c"); x.fillStyle=g; x.fillRect(0,0,1080,1920);
+  try{ await document.fonts.ready; }catch(_){}
+  const logo=new Image(); logo.src="logo.png"; await logo.decode().catch(()=>{});
+  x.fillStyle="#fff"; x.beginPath(); x.roundRect(140,170,800,360,40); x.fill();
+  if(logo.width){ const w=700, h=logo.height*w/logo.width; x.drawImage(logo,190,170+(360-h)/2,w,h); }
+  x.textAlign="center"; x.fillStyle="#f3c64a"; x.font="120px sans-serif"; x.fillText("★".repeat(d.rating)+"☆".repeat(5-d.rating),540,720);
+  x.fillStyle="#fff"; x.font="700 64px 'Baloo 2', Mukta, sans-serif";
+  const quote=d.text||[...d.tags].join("  ")||"बहुत बढ़िया तेल!";
+  let y=880; for(const line of wrap(x,"“"+quote+"”",880).slice(0,8)){ x.fillText(line,540,y); y+=90; }
+  if(d.text&&d.tags.length){ x.font="500 46px Mukta, sans-serif"; x.fillStyle="#f7ecc8"; for(const line of wrap(x,d.tags.join("  "),900).slice(0,2)){ y+=20; x.fillText(line,540,y); y+=60; } }
+  x.font="600 52px Mukta, sans-serif"; x.fillStyle="#f7ecc8"; x.fillText("— "+d.name,540,y+100);
+  x.fillStyle="#fff"; x.font="700 60px Mukta, sans-serif"; x.fillText("@divineeliteoil",540,1700);
+  x.font="500 40px Mukta, sans-serif"; x.fillStyle="#cfe3c9"; x.fillText("शुद्ध · प्राकृतिक · कोल्ड प्रेस तेल",540,1775);
+  const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.92)); const file=new File([blob],"divine-review.jpg",{type:"image/jpeg"});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file],text:"@divineeliteoil"}); return; }catch(e){ if(e&&e.name==="AbortError") return; } }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="divine-review.jpg"; a.click(); alertLike("फ़ोटो डाउनलोड हो गई। Instagram खोलकर स्टोरी में लगाएँ और @divineeliteoil टैग करें।");
+}
+function alertLike(t){ const p=document.createElement("p"); p.className="muted center"; p.textContent=t; $("#story").after(p); }
+</script>
+</body></html>

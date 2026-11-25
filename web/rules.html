@@ -59,6 +59,25 @@ service cloud.firestore {
       allow read: if isUser();
       allow write: if isAdmin();
     }
+    match /meta/public {
+      allow get: if true;
+      allow write: if isAdmin();
+    }
+    match /reviews/{code} {
+      allow create: if code.size() == 6
+        &amp;&amp; request.resource.data.keys().hasOnly([&#x27;rating&#x27;, &#x27;tags&#x27;, &#x27;text&#x27;, &#x27;name&#x27;, &#x27;phone&#x27;, &#x27;createdAt&#x27;, &#x27;used&#x27;])
+        &amp;&amp; request.resource.data.rating is int
+        &amp;&amp; request.resource.data.rating &gt;= 1 &amp;&amp; request.resource.data.rating &lt;= 5
+        &amp;&amp; request.resource.data.tags is list &amp;&amp; request.resource.data.tags.size() &lt;= 8
+        &amp;&amp; request.resource.data.text is string &amp;&amp; request.resource.data.text.size() &lt;= 600
+        &amp;&amp; request.resource.data.name is string &amp;&amp; request.resource.data.name.size() &lt;= 60
+        &amp;&amp; request.resource.data.phone is string &amp;&amp; request.resource.data.phone.size() &lt;= 15
+        &amp;&amp; request.resource.data.used == false;
+      allow get: if isUser();
+      allow list: if isUser();
+      allow update: if canBill();
+      allow delete: if isAdmin();
+    }
     match /purchaseFiles/{id} {
       allow read: if isUser();
       allow write: if isAdmin();
