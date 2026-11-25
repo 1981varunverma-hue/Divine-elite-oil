@@ -686,7 +686,7 @@ function invoiceHtml(b){
   </div>
   <div style="display:flex;align-items:center;gap:14px;margin-top:22px;padding:10px 12px;border:1px solid #d9c27a;border-radius:10px;background:#fbf6e6">
     <img src="${QR_URL}" alt="" style="width:92px;height:92px;flex:none">
-    <div style="font-size:13px;line-height:1.5"><div style="font-weight:700;color:#1d5e2c;font-size:15px">QR स्कैन करें · ⭐ रिव्यू दें, ${esc(reviewDiscText())} पाएँ</div>
+    <div style="font-size:13px;line-height:1.5"><div style="font-weight:700;color:#1d5e2c;font-size:15px">QR स्कैन करें · ⭐ रिव्यू दें और हमसे जुड़ें</div>
       <div>📷 Instagram: <b>@divineeliteoil</b> &nbsp; · &nbsp; 👍 Facebook: <b>Divine Elite Oil</b></div>
       <div>👥 WhatsApp ग्रुप: ऑफ़र और नए स्टॉक की खबर सबसे पहले</div>
       <div>📞 ऑर्डर: <b>+91 89291 21378</b></div></div>
@@ -1179,7 +1179,7 @@ async function makeReviewPoster(){
     <img src="${LOGO_URL}" style="width:520px;height:auto">
     <div style="line-height:1.15"><div style="font-size:52px;font-weight:800;color:#0b3d10;letter-spacing:.3px">Connect with Divine Family</div><div style="font-size:34px;font-weight:700;color:#8a5a00;margin-top:6px">एक स्कैन, सब कुछ!</div></div>
     <img src="${img}" style="width:400px;height:400px;image-rendering:pixelated">
-    <div style="font-size:40px;font-weight:800;color:#fff;background:#b3261e;border-radius:16px;padding:10px 28px">⭐ रिव्यू दें, इसी बिल पर ${esc(reviewDiscText())} 🎁</div>
+    <div style="font-size:40px;font-weight:800;color:#fff;background:#b3261e;border-radius:16px;padding:10px 28px">⭐ हमें रिव्यू दें</div>
     <div style="font-size:32px;font-weight:700;color:#16301c;line-height:1.5">📷 Instagram · 👍 Facebook · 👥 WhatsApp ग्रुप<br>📞 ऑर्डर: +91 89291 21378</div></div>`;
   document.body.appendChild(host);
   await Promise.all([...host.querySelectorAll("img")].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r;})));

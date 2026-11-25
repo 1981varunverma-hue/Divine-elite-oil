@@ -28,6 +28,8 @@ h1{font-family:var(--display);font-weight:800;font-size:2.3rem;line-height:1;mar
 .elite{font-family:var(--display);font-weight:700;letter-spacing:.3em;color:var(--gold);font-size:.95rem}
 .tag{color:var(--muted);font-size:.95rem;margin:2px 0 0}
 .links{display:flex;flex-direction:column;gap:10px}
+[hidden]{display:none!important}
+#glink{margin-top:12px}
 .lnk{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;background:var(--card);border:1px solid var(--line);color:var(--fg);text-decoration:none;font-weight:600;font-size:1.05rem;transition:transform .12s}
 .lnk:hover{transform:translateY(-1px)}
 .lnk:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
@@ -71,8 +73,12 @@ td small{color:var(--muted)}
 
   <a class="review" href="review.html">
     <span class="rstars" aria-hidden="true">★★★★★</span>
-    <span class="rt">रिव्यू दें, अभी <b id="disc">5% छूट</b> पाएँ 🎁</span>
+    <span class="rt">⭐ हमें रिव्यू दें</span>
     <span class="rs">1 मिनट · स्टार दें और अपनी बात लिखें</span>
+  </a>
+  <a class="lnk" id="glink" hidden target="_blank" rel="noopener" href="#">
+    <span class="ic" aria-hidden="true" style="background:#fff;color:#4285f4;font:800 22px/1 Arial,sans-serif">G</span>
+    <span>Google पर रिव्यू दें<small>Google Maps पर ⭐⭐⭐⭐⭐ दें</small></span>
   </a>
   <nav class="links" aria-label="हमसे जुड़ें">
     <a class="lnk primary" target="_blank" rel="noopener" href="https://wa.me/918929121378?text=%E0%A4%A8%E0%A4%AE%E0%A4%B8%E0%A5%8D%E0%A4%A4%E0%A5%87%2C%20%E0%A4%AE%E0%A5%81%E0%A4%9D%E0%A5%87%20%E0%A4%A4%E0%A5%87%E0%A4%B2%20%E0%A4%95%E0%A4%BE%20%E0%A4%91%E0%A4%B0%E0%A5%8D%E0%A4%A1%E0%A4%B0%20%E0%A4%A6%E0%A5%87%E0%A4%A8%E0%A4%BE%20%E0%A4%B9%E0%A5%88">
@@ -114,9 +120,9 @@ td small{color:var(--muted)}
 </div>
 
 <script>
-// Show the current review discount (public setting kept in Firestore meta/public).
+// Google review link comes from the app's settings (Firestore meta/public).
 fetch("https://firestore.googleapis.com/v1/projects/divine-elite-oil/databases/(default)/documents/meta/public?key=AIzaSyA6F90GWiPnzWtv7BRVQWNBitjpwlgrKCs")
-  .then(r=>r.ok?r.json():null).then(j=>{ if(!j||!j.fields) return; const f=j.fields; const t=f.discType&&f.discType.stringValue; const v=f.discValue&&(f.discValue.integerValue||f.discValue.doubleValue);
-    if(v) document.getElementById("disc").textContent=t==="flat"?"₹"+v+" छूट":v+"% छूट"; }).catch(()=>{});
+  .then(r=>r.ok?r.json():null).then(j=>{ const g=j&&j.fields&&j.fields.googleUrl&&j.fields.googleUrl.stringValue;
+    if(g&&/^https:\/\//.test(g)){ const a=document.getElementById("glink"); a.href=g; a.hidden=false; } }).catch(()=>{});
 </script>
 </body></html>
