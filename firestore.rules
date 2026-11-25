@@ -1,0 +1,56 @@
+rules_version = '2';
+// Paste this into Firebase console -> Firestore Database -> Rules -> Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function isUser() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function role() { return profile().data.role; }
+    function isAdmin() { return isUser() && role() == 'admin'; }
+    function canBill() { return isUser() && role() in ['admin', 'staff']; }
+
+    // Only tells the app whether first-time setup is done.
+    match /meta/owner {
+      allow get: if true;
+      allow create: if signedIn()
+        && !exists(/databases/$(database)/documents/meta/owner)
+        && request.resource.data.uid == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      allow read: if isUser();
+      // The owner creates their own admin profile once during setup; after that only admins add people.
+      allow create: if isAdmin()
+        || (signedIn() && uid == request.auth.uid
+            && request.resource.data.role == 'admin'
+            && get(/databases/$(database)/documents/meta/owner).data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /settings/{id} {
+      allow read: if isUser();
+      allow write: if isAdmin()
+        || (signedIn() && id == 'shop'
+            && get(/databases/$(database)/documents/meta/owner).data.uid == request.auth.uid);
+    }
+    match /products/{id} {
+      allow read: if isUser();
+      allow create, update: if canBill();
+      allow delete: if isAdmin();
+    }
+    match /customers/{id} {
+      allow read: if isUser();
+      allow create, update: if canBill();
+      allow delete: if isAdmin();
+    }
+    match /bills/{id} {
+      allow read: if isUser();
+      allow create, update: if canBill();
+      allow delete: if isAdmin();
+    }
+    match /purchases/{id} {
+      allow read: if isUser();
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Divine Elite Oil बिलिंग</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1d5e2c">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Divine Billing">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Mukta:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: mobile-first app shell, sticky header, bottom tab bar on phone, side-by-side tabs on desktop */
+:root{
+  --bg:#f7f6f1; --surface:#ffffff; --surface2:#f0eee4; --line:#e2ddcb;
+  --fg:#23241c; --muted:#6c6b5c; --accent:#b8860b; --accent-ink:#1f1a05; --accent-soft:#f6e9bf;
+  --wa:#1f9d55; --wa-ink:#ffffff; --due:#c0392b; --ok:#1f8a4c;
+  --display:"Baloo 2","Mukta",system-ui,sans-serif; --body:"Mukta","Noto Sans Devanagari",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#16170f; --surface:#1f2016; --surface2:#28291d; --line:#3a3a2a;
+  --fg:#efeee2; --muted:#a8a690; --accent:#e0b23a; --accent-ink:#1a1402; --accent-soft:#3b3214;
+  --wa:#2bb56a; --wa-ink:#06140b; --due:#f07a6c; --ok:#5ccc8a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#16170f; --surface:#1f2016; --surface2:#28291d; --line:#3a3a2a;
+  --fg:#efeee2; --muted:#a8a690; --accent:#e0b23a; --accent-ink:#1a1402; --accent-soft:#3b3214;
+  --wa:#2bb56a; --wa-ink:#06140b; --due:#f07a6c; --ok:#5ccc8a; color-scheme:dark}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+img{max-width:100%}
+body.ro #addC, body.ro [data-edit], body.ro [data-bill], body.ro #mpaid, body.ro #addPur, body.ro [data-pe], body.ro #medit, body.ro #mdel{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:980px;margin:0 auto}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:12px;padding-block:10px}
+.logo{width:36px;height:36px;border-radius:50% 50% 50% 8px;background:var(--accent);transform:rotate(-45deg);flex:none}
+.brand{font-family:var(--display);font-weight:700;font-size:1.25rem;line-height:1.1}
+.brand small{display:block;font-family:var(--body);font-weight:500;font-size:.8rem;color:var(--muted)}
+.sync{margin-left:auto;font-size:.8rem;color:var(--muted);text-align:right}
+nav.tabs{display:flex;gap:4px;overflow-x:auto}
+nav.tabs button{flex:1;min-width:0;border:0;background:none;color:var(--muted);font:600 .95rem var(--body);padding:10px 6px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+nav.tabs button[aria-current="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+nav.tabs .ic{display:block;font-size:1.15rem;line-height:1}
+@media (max-width:700px){
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);
+    padding:2px max(4px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(4px,env(safe-area-inset-left,0px))}
+  nav.tabs button{font-size:.7rem;padding:8px 1px;border-bottom:0;border-top:3px solid transparent}
+  nav.tabs button[aria-current="true"]{border-top-color:var(--accent)}
+  main{padding-bottom:90px}
+}
+@media (min-width:701px){ nav.tabs .ic{display:none} .desk-tabs{border-bottom:1px solid var(--line);background:var(--surface)} }
+main .wrap{padding-block:18px 40px;display:flex;flex-direction:column;gap:16px}
+h2{font-family:var(--display);font-size:1.45rem;margin:0;text-wrap:balance;line-height:1.2}
+h3{font-family:var(--display);font-size:1.1rem;margin:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row>*{flex:1 1 140px;min-width:0}
+label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted);font-weight:500}
+input,select,textarea{font:inherit;font-size:1rem;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;min-width:0}
+textarea{min-height:110px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn{font:600 1rem var(--body);border-radius:8px;border:1px solid var(--line);background:var(--surface2);color:var(--fg);padding:9px 14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.wa{background:var(--wa);border-color:var(--wa);color:var(--wa-ink)}
+.btn.small{font-size:.85rem;padding:5px 10px}
+.btn.ghost{background:none}
+.btn.danger{color:var(--due)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.due{color:var(--due);font-weight:600}
+.ok{color:var(--ok);font-weight:600}
+.pill{display:inline-block;font-size:.75rem;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--surface2);color:var(--muted)}
+.pill.due{background:color-mix(in srgb,var(--due) 15%,transparent);color:var(--due)}
+.pill.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.tablebox{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:.78rem;color:var(--muted);font-weight:600;letter-spacing:.02em}
+td.r,th.r{text-align:right}
+.items .line{display:grid;grid-template-columns:2fr 80px 100px 100px 36px;gap:8px;align-items:end}
+@media (max-width:600px){.items .line{grid-template-columns:1fr 1fr 1fr;}.items .line .pname{grid-column:1/-1}.items .line .lamt{grid-column:1/3}}
+.lamt{font-weight:600;padding:9px 0;text-align:right}
+.totals{display:grid;grid-template-columns:1fr auto;gap:4px 16px;font-size:1rem}
+.totals .grand{font-family:var(--display);font-size:1.4rem;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.stat .k{font-size:.82rem;color:var(--muted)}
+.stat .v{font-family:var(--display);font-size:1.4rem;font-weight:700;line-height:1.2}
+.stat .s{font-size:.78rem;color:var(--muted)}
+.bars{display:flex;align-items:flex-end;gap:3px;height:140px;border-bottom:1px solid var(--line);padding-top:8px}
+.bars div{flex:1;background:var(--accent);border-radius:3px 3px 0 0;min-height:1px;opacity:.85}
+.bars div.today{opacity:1;outline:2px solid var(--fg);outline-offset:-2px}
+.barlbl{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted)}
+.list{display:flex;flex-direction:column}
+.li{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.li .main{flex:1 1 180px;min-width:0}
+.li .main b{display:block}
+.li .acts{display:flex;gap:6px;flex-wrap:wrap}
+.empty{text-align:center;color:var(--muted);padding:24px 8px}
+.notice{background:var(--accent-soft);border-radius:10px;padding:10px 12px;font-size:.92rem}
+.receipt{background:var(--bg);border:1px dashed var(--line);border-radius:10px;padding:12px;white-space:pre-wrap;font-size:.92rem;font-family:var(--body)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+@media (min-width:701px){.modal{align-items:center}}
+.modal .card{width:100%;max-width:560px;max-height:88vh;overflow:auto}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:99px;z-index:30;font-weight:600}
+.check{display:flex;flex-direction:row;align-items:center;gap:8px;color:var(--fg);font-size:1rem}
+.check input{width:auto}
+.segs{display:flex;gap:6px;flex-wrap:wrap}
+.segs .btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="logo" aria-hidden="true"></div>
+    <div class="brand"><span id="shopName">Divine Elite Oil</span><small>बिलिंग · ग्राहक · व्हाट्सएप</small></div>
+    <div class="sync" id="sync">लोड हो रहा है…</div>
+  </div>
+  <div class="desk-tabs"><div class="wrap"><nav class="tabs" id="tabs"></nav></div></div>
+</header>
+
+<main><div class="wrap" id="view"></div></main>
+<div id="modalRoot"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module" src="firebase.js"></script>
+<script>
+(function(){
+"use strict";
+// ---------- helpers ----------
+const $ = (s,el=document)=>el.querySelector(s);
+const esc = v => String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const inr = n => "₹" + (Math.round((+n||0)*100)/100).toLocaleString("en-IN",{maximumFractionDigits:2});
+const r2 = n => Math.round((+n||0)*100)/100;
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const today = () => ymd(new Date());
+const showDate = s => s ? s.split("-").reverse().join("-") : "";
+const MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
+const monthName = ym => { const [y,m]=ym.split("-"); return MONTHS[+m-1]+" "+y; };
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const phoneWa = p => { let d=String(p||"").replace(/\D/g,""); if(d.length===11&&d[0]==="0") d=d.slice(1); if(d.length===10) d="91"+d; return d; };
+const waLink = (phone,text) => { const n=phoneWa(phone); return "https://wa.me/"+(n||"")+"?text="+encodeURIComponent(text); };
+
+function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
+
+// ---------- data layer (db when available, otherwise this browser) ----------
+const COLLS = ["customers","products","bills","purchases","settings"];
+const state = { customers:[], products:[], bills:[], purchases:[], users:[], settings:{}, mode:"loading" };
+let db = null;
+const LS = "divine-oil-v1";
+function lsLoad(){ try{ const j=JSON.parse(localStorage.getItem(LS)||"{}"); COLLS.forEach(c=>{ if(c==="settings") state.settings=j.settings||{}; else state[c]=j[c]||[]; }); }catch(e){} }
+function lsSave(){ try{ localStorage.setItem(LS, JSON.stringify({customers:state.customers,products:state.products,bills:state.bills,purchases:state.purchases,settings:state.settings})); }catch(e){} }
+
+async function save(coll,id,data){
+  if(coll==="settings"){ state.settings={...state.settings,...data}; }
+  else { const arr=state[coll]; const i=arr.findIndex(x=>x.id===id); const rec={...data,id}; if(i>=0) arr[i]=rec; else arr.push(rec); }
+  if(db){ try{ if(coll==="settings") await db.doc("settings/shop").set({...state.settings}); else { const {id:_,...rest}=data; await db.collection(coll).doc(id).set(rest); } }catch(e){ toast("सेव नहीं हुआ: "+(e&&e.message||"")); } }
+  else lsSave();
+  render();
+}
+async function removeRec(coll,id){
+  state[coll]=state[coll].filter(x=>x.id!==id);
+  if(db){ try{ await db.collection(coll).doc(id).delete(); }catch(e){ toast("हटाया नहीं जा सका"); } } else lsSave();
+  render();
+}
+
+function setSync(){
+  const el=$("#sync");
+  el.textContent = state.mode==="loading"?"लोड हो रहा है…":"";
+}
+
+function waitFB(){ return window.FB?Promise.resolve(window.FB):new Promise(r=>window.addEventListener("fb-ready",()=>r(window.FB),{once:true})); }
+let FBX=null, unsubs=[], subscribed=false;
+function unsubAll(){ unsubs.forEach(u=>{ try{u();}catch(_){} }); unsubs=[]; subscribed=false; }
+function subscribeData(){
+  subscribed=true; const pending=new Set(["customers","products","bills","purchases","settings","users"]);
+  const done=c=>{ if(pending.delete(c)&&!pending.size){ state.mode="db"; } render(); };
+  const fail=e=>{ toast("डेटा नहीं खुला: "+(e&&e.code||"")); };
+  ["customers","products","bills","purchases","users"].forEach(c=>{ unsubs.push(FBX.onColl(c,docs=>{ state[c]=docs; done(c); },fail)); });
+  unsubs.push(FBX.onDoc("settings/shop",d=>{ state.settings=d||{}; done("settings"); },fail));
+}
+async function connect(){
+  const F=FBX=await waitFB();
+  db={ collection:c=>({ doc:id=>({ set:d=>F.set(c+"/"+id,d), delete:()=>F.del(c+"/"+id) }) }), doc:p=>({ set:d=>F.set(p,d) }) };
+  F.onAuth(async u=>{
+    unsubAll(); me=null; state.users=[];
+    if(!u){ let owner=null; try{ owner=await F.get("meta/owner"); }catch(_){} state.mode=owner?"login":"setup"; render(); return; }
+    state.mode="loading"; render();
+    unsubs.push(F.onDoc("users/"+u.uid,d=>{
+      if(!d){ me=null; state.mode="noaccess"; render(); return; }
+      me={uid:u.uid,...d}; if(!subscribed) subscribeData(); else render();
+    },()=>{ state.mode="noaccess"; render(); }));
+  });
+}
+window.addEventListener("online",()=>render()); window.addEventListener("offline",()=>render());
+
+// ---------- calculations ----------
+const S = () => ({ name:"Divine Elite Oil", address:"", phone:"", gstin:"", gstOn:false, gstIncl:true, prefix:"DEO-", footer:"धन्यवाद! फिर पधारें 🙏", adminPin:"", staff:[], ...state.settings });
+function calcBill(items, discount, gstOn, gstIncl){
+  // discount is spread over the lines before tax, so taxable value is after discount
+  const gross=items.reduce((a,it)=>a+r2((+it.qty||0)*(+it.rate||0)),0);
+  const f=gross>0?Math.max(0,(gross-(+discount||0))/gross):1;
+  let sub=0, tax=0;
+  const lines=items.map(it=>{
+    const net=r2((+it.qty||0)*(+it.rate||0))*f; const g=gstOn?(+it.gst||0):0; let base=net, t=0;
+    if(g){ if(gstIncl){ base=net/(1+g/100); t=net-base; } else { t=net*g/100; } }
+    sub+=base; tax+=t; return {base,tax:t,g};
+  });
+  return { sub:r2(sub), tax:r2(tax), total:r2(sub+tax), lines };
+}
+function inWords(num){
+  const a=["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+  const t=["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+  const two=n=>n<20?a[n]:t[Math.floor(n/10)]+(n%10?" "+a[n%10]:"");
+  const three=n=>(n>=100?a[Math.floor(n/100)]+" Hundred"+(n%100?" ":""):"")+(n%100?two(n%100):"");
+  let n=Math.floor(num), paise=Math.round((num-n)*100), out=[];
+  const cr=Math.floor(n/1e7); n%=1e7; const lk=Math.floor(n/1e5); n%=1e5; const th=Math.floor(n/1e3); n%=1e3;
+  if(cr) out.push(two(cr)+" Crore"); if(lk) out.push(two(lk)+" Lakh"); if(th) out.push(two(th)+" Thousand"); if(n) out.push(three(n));
+  let w="Rupees "+(out.join(" ")||"Zero"); if(paise) w+=" and "+two(paise)+" Paise"; return w+" Only";
+}
+const billDue = b => r2((b.total||0)-(b.paid||0));
+function custStats(cid){ const bs=state.bills.filter(b=>b.customerId===cid); return { count:bs.length, total:r2(bs.reduce((a,b)=>a+(b.total||0),0)), due:r2(bs.reduce((a,b)=>a+Math.max(0,billDue(b)),0)), last:bs.map(b=>b.date).sort().pop()||"" }; }
+function nextBillNo(){ const s=S(); let max=0; state.bills.forEach(b=>{ const m=String(b.no||"").match(/(\d+)\s*$/); if(m) max=Math.max(max,+m[1]); }); return s.prefix+String(max+1).padStart(4,"0"); }
+
+function billText(b){
+  const s=S(); const L=[];
+  if(b.gstOn) L.push("*TAX INVOICE / टैक्स इनवॉइस*");
+  L.push("*"+s.name+"*"); L.push("शुद्ध · प्राकृतिक · बिना रिफाइन · कोल्ड प्रेस"); if(s.address) L.push(s.address); if(s.phone) L.push("फ़ोन: "+s.phone); if(b.gstOn&&s.gstin) L.push("GSTIN: "+s.gstin);
+  L.push(""); L.push("बिल नं: "+b.no+"   तारीख: "+showDate(b.date)); L.push("ग्राहक: "+(b.customerName||"नकद ग्राहक")); if(b.gstOn&&b.customerGstin) L.push("ग्राहक GSTIN: "+b.customerGstin);
+  L.push("------------------------------");
+  (b.items||[]).forEach(it=>L.push(it.name+(b.gstOn&&it.hsn?" (HSN "+it.hsn+", GST "+it.gst+"%)":"")+"  "+it.qty+" "+(it.unit||"")+" × "+inr(it.rate)+" = "+inr(r2(it.qty*it.rate))));
+  L.push("------------------------------");
+  if(b.discount) L.push("छूट: -"+inr(b.discount));
+  if(b.gstOn&&b.tax){ const cg=r2(b.tax/2); L.push("टैक्स योग्य राशि: "+inr(b.sub)); L.push("CGST: "+inr(cg)+"  SGST: "+inr(r2(b.tax-cg))); if(s.gstIncl) L.push("(रेट में GST शामिल है)"); }
+  L.push("*कुल राशि: "+inr(b.total)+"*");
+  L.push("जमा: "+inr(b.paid||0)+" ("+(b.mode||"नकद")+")");
+  const due=billDue(b); if(due>0) L.push("*बाकी: "+inr(due)+"*");
+  L.push(""); L.push(s.footer);
+  return L.join("\n");
+}
+
+// ---------- UI shell ----------
+const TABS=[["bill","नया बिल","🧾"],["bills","बिल","📋"],["report","सेल","📊"],["customers","ग्राहक","👥"],["purchase","खरीद","📥"],["msg","मैसेज","💬"],["settings","सेटिंग","⚙️"]];
+const MODES=["नकद","UPI / QR","डेबिट कार्ड","क्रेडिट कार्ड","बैंक ट्रांसफर","उधार"];
+const STAFF_TABS=["bill","bills","customers","msg"];
+const PARTNER_TABS=["bills","report","customers","purchase"];
+const ROLE_NAME={admin:"एडमिन",staff:"स्टाफ़",partner:"पार्टनर"};
+let me=null;
+const isAdmin=()=>!!me&&me.role==="admin";
+const isPartner=()=>!!me&&me.role==="partner";
+const isLocked=()=>!me;
+const meName=()=>me?me.name:"";
+const allowedTabs=()=>TABS.filter(t=>isAdmin()||(isPartner()?PARTNER_TABS:STAFF_TABS).includes(t[0]));
+const phoneEmail=ph=>String(ph).replace(/\D/g,"").slice(-10)+"@users.divine-elite-oil.app";
+let tab = (location.hash||"").slice(1); if(!TABS.some(t=>t[0]===tab)) tab="bill";
+let draft = freshDraft();
+let ui = { billQ:"", billFrom:"", billTo:"", custQ:"", repMonth:today().slice(0,7), repYear:today().slice(0,4), msgText:"नमस्ते {नाम} जी,\nDivine Elite Oil की तरफ़ से नया स्टॉक आ गया है। आज ही ऑर्डर करें। 🙏", msgSel:new Set(), msgFilter:"all", sent:new Set() };
+function freshDraft(){ return { customerId:"", customerName:"", customerPhone:"", customerGstin:"", date:today(), items:[{name:"",qty:1,unit:"लीटर",rate:0,gst:5}], discount:0, paid:"", mode:"नकद" }; }
+
+function renderTabs(){
+  if(isLocked()){ $("#tabs").innerHTML=""; return; }
+  $("#tabs").innerHTML = allowedTabs().map(([k,l,i])=>`<button data-tab="${k}" aria-current="${k===tab}"><span class="ic" aria-hidden="true">${i}</span>${l}</button>`).join("");
+}
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b){ tab=b.dataset.tab; try{history.replaceState(null,"","#"+tab);}catch(_){location.hash=tab;} render(); window.scrollTo(0,0);} });
+window.addEventListener("hashchange",()=>{ const t=location.hash.slice(1); if(TABS.some(x=>x[0]===t)&&t!==tab){ tab=t; render(); } });
+
+function render(){
+  const s=S(); $("#shopName").textContent=s.name; setSync(); renderTabs();
+  const v=$("#view");
+  const keepFocus=document.activeElement&&document.activeElement.id; const sel=keepFocus&&document.activeElement.selectionStart;
+  if(state.mode==="loading"){ v.innerHTML=`<div class="card empty">डेटा लोड हो रहा है…</div>`; return; }
+  document.body.classList.toggle("ro",isPartner());
+  if(state.mode==="setup"){ viewSetup(v); return; }
+  if(state.mode==="login"){ viewLogin(v); return; }
+  if(state.mode==="noaccess"){ v.innerHTML=`<div class="card" style="max-width:440px;margin:24px auto;width:100%"><h2>आपका अकाउंट बंद है</h2><p>एडमिन से अपना अकाउंट फिर से जुड़वाएं।</p><button class="btn" id="lo2">लॉग आउट</button></div>`; $("#lo2").onclick=()=>FBX.signOut(); return; }
+  if(isLocked()){ v.innerHTML=`<div class="card empty">लोड हो रहा है…</div>`; return; }
+  if(!allowedTabs().some(t=>t[0]===tab)) tab="bill";
+  if(me){ const el=$("#sync"); el.innerHTML=`${esc(me.name)} <span class="pill">${esc(ROLE_NAME[me.role]||"")}</span><br><span class="${navigator.onLine?"":"due"}" style="font-size:.75rem">${navigator.onLine?"✓ ऑनलाइन":"ऑफ़लाइन, नेट आने पर सेव होगा"}</span> <button class="btn small ghost" id="logout" style="padding:2px 8px;margin-top:2px">लॉग आउट</button>`; $("#logout").onclick=()=>{ $("#modalRoot").innerHTML=""; FBX.signOut(); }; }
+  ({bill:viewBill,bills:viewBills,report:viewReport,customers:viewCustomers,purchase:viewPurchases,msg:viewMsg,settings:viewSettings})[tab](v);
+  if(keepFocus){ const el=document.getElementById(keepFocus); if(el){ el.focus(); try{ if(sel!=null) el.setSelectionRange(sel,sel); }catch(_){} } }
+}
+
+// ---------- Login (shared device) ----------
+function viewLogin(v){
+  v.innerHTML=`<form class="card" id="lockf" style="max-width:420px;margin:24px auto;width:100%">
+    <h2>लॉगिन करें</h2>
+    <label>मोबाइल नंबर<input id="lk_ph" inputmode="tel" autocomplete="username" placeholder="10 अंक"></label>
+    <label>PIN (6 अंक)<input id="lk_pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="6"></label>
+    <div class="due" id="lk_err" hidden></div>
+    <button class="btn primary" type="submit" id="lk_go">खोलें</button>
+  </form>`;
+  try{ const last=localStorage.getItem("divine-last-phone"); if(last) $("#lk_ph").value=last; }catch(_){}
+  $("#lockf").onsubmit=async e=>{ e.preventDefault(); const ph=$("#lk_ph").value.replace(/\D/g,"").slice(-10), pin=$("#lk_pin").value.trim(), err=$("#lk_err");
+    if(ph.length!==10||!/^\d{6}$/.test(pin)){ err.hidden=false; err.textContent="10 अंक का मोबाइल नंबर और 6 अंक का PIN डालें"; return; }
+    $("#lk_go").disabled=true; $("#lk_go").textContent="खुल रहा है…";
+    try{ await FBX.signIn(phoneEmail(ph),pin); try{ localStorage.setItem("divine-last-phone",ph); }catch(_){} }
+    catch(x){ err.hidden=false; err.textContent=(x&&x.code==="auth/network-request-failed")?"इंटरनेट नहीं है":"नंबर या PIN सही नहीं है"; $("#lk_go").disabled=false; $("#lk_go").textContent="खोलें"; $("#lk_pin").value=""; } };
+  ($("#lk_ph").value?$("#lk_pin"):$("#lk_ph")).focus();
+}
+const SEED_PRODUCTS=[["black-mustard","काली सरसों का तेल",320,"1514"],["yellow-mustard","पीली सरसों का तेल",350,"1514"],["coconut","नारियल का तेल",800,"1513"],["groundnut","मूंगफली का तेल",415,"1508"],["flaxseed","अलसी का तेल",2100,"1515"],["sesame","तिल का तेल",600,"1515"]];
+function viewSetup(v){
+  v.innerHTML=`<form class="card" id="setf" style="max-width:460px;margin:24px auto;width:100%">
+    <h2>पहली बार सेटअप</h2>
+    <p class="muted" style="margin:0">यह सिर्फ़ एक बार होगा। आप इस ऐप के मालिक (एडमिन) बनेंगे। बाद में सेटिंग से स्टाफ़ और पार्टनर जोड़ सकते हैं।</p>
+    <label>आपका नाम<input id="su_name" required></label>
+    <label>आपका मोबाइल नंबर (यही लॉगिन होगा)<input id="su_ph" inputmode="tel" required></label>
+    <label>नया PIN (6 अंक)<input id="su_pin" type="password" inputmode="numeric" maxlength="6" required></label>
+    <label>PIN दोबारा<input id="su_pin2" type="password" inputmode="numeric" maxlength="6" required></label>
+    <div class="due" id="su_err" hidden></div>
+    <button class="btn primary" type="submit" id="su_go">सेटअप पूरा करें</button>
+  </form>`;
+  $("#setf").onsubmit=async e=>{ e.preventDefault(); const err=$("#su_err"); const name=$("#su_name").value.trim(), ph=$("#su_ph").value.replace(/\D/g,"").slice(-10), pin=$("#su_pin").value.trim();
+    const bad=m=>{ err.hidden=false; err.textContent=m; };
+    if(!name) return bad("नाम डालें"); if(ph.length!==10) return bad("10 अंक का मोबाइल नंबर डालें"); if(!/^\d{6}$/.test(pin)) return bad("PIN 6 अंक का होना चाहिए"); if(pin!==$("#su_pin2").value.trim()) return bad("दोनों PIN एक जैसे नहीं हैं");
+    $("#su_go").disabled=true; $("#su_go").textContent="सेटअप हो रहा है…";
+    try{
+      const uidNew=await FBX.signUp(phoneEmail(ph),pin);
+      await FBX.set("meta/owner",{uid:uidNew,createdAt:Date.now()});
+      await FBX.set("users/"+uidNew,{name,phone:ph,role:"admin",createdAt:Date.now()});
+      await FBX.set("settings/shop",{name:"Divine Elite Oil",prefix:"DEO-",phone:"+91 8929121378",address:"Shop No. 2122, New Colony Mod, Gurugram (Opposite Pappu Fish Corner)",footer:"धन्यवाद! फिर पधारें 🙏",gstOn:true,gstIncl:true,gstin:"06AYIPV1022D1ZR"});
+      for(const [id,n,rate,hsn] of SEED_PRODUCTS) await FBX.set("products/"+id,{name:n,unit:"लीटर",rate,gst:5,hsn});
+      try{ localStorage.setItem("divine-last-phone",ph); }catch(_){}
+    }catch(x){ $("#su_go").disabled=false; $("#su_go").textContent="सेटअप पूरा करें"; bad("सेटअप नहीं हुआ: "+(x&&x.code||x)); }
+  };
+}
+
+// ---------- New bill ----------
+function viewBill(v){
+  const s=S(); const c=calcBill(draft.items,draft.discount,s.gstOn,s.gstIncl);
+  const paid = draft.paid===""?c.total:(+draft.paid||0);
+  const custOpts = state.customers.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(x=>`<option value="${esc(x.id)}" ${x.id===draft.customerId?"selected":""}>${esc(x.name)}${x.phone?" · "+esc(x.phone):""}</option>`).join("");
+  const prodList = state.products.map(p=>`<option value="${esc(p.name)}"></option>`).join("");
+  v.innerHTML = `
+  ${draft.editId?`<div class="notice row" style="align-items:center"><span style="flex:1 1 200px">आप बिल <b>${esc(draft.editNo)}</b> बदल रहे हैं। सेव करने पर पुराना बिल बदल जाएगा।</span><button class="btn small" id="cancelEdit" style="flex:none">बदलना रद्द करें</button></div>`:""}
+  <div class="row" style="align-items:center"><h2>${draft.editId?"बिल बदलें":"नया बिल"}</h2><span class="pill" style="flex:none">${esc(draft.editId?draft.editNo:nextBillNo())}</span></div>
+  <section class="card">
+    <h3>ग्राहक</h3>
+    <div class="row">
+      <label>पुराना ग्राहक चुनें<select id="d_cust"><option value="">— नया / नकद ग्राहक —</option>${custOpts}</select></label>
+      <label>तारीख<input type="date" id="d_date" value="${esc(draft.date)}"></label>
+    </div>
+    ${draft.customerId?"":`<div class="row">
+      <label>ग्राहक का नाम<input id="d_cname" value="${esc(draft.customerName)}" placeholder="जैसे: शर्मा किराना स्टोर"></label>
+      <label>व्हाट्सएप नंबर<input id="d_cphone" inputmode="tel" value="${esc(draft.customerPhone)}" placeholder="10 अंक का नंबर"></label>
+      <label>GSTIN (अगर है)<input id="d_cgstin" value="${esc(draft.customerGstin)}" placeholder="ज़रूरी नहीं"></label>
+    </div><p class="muted" style="margin:0;font-size:.85rem">नाम और नंबर डालेंगे तो ग्राहक अपने आप लिस्ट में जुड़ जाएगा।</p>`}
+  </section>
+  <section class="card items">
+    <h3>सामान</h3>
+    <datalist id="prodlist">${prodList}</datalist>
+    ${draft.items.map((it,i)=>`<div class="line">
+      <label class="pname">प्रोडक्ट<input list="prodlist" id="i_name_${i}" data-i="${i}" data-f="name" value="${esc(it.name)}" placeholder="जैसे: सरसों तेल 1 लीटर"></label>
+      <label>मात्रा<input type="number" step="any" min="0" inputmode="decimal" id="i_qty_${i}" data-i="${i}" data-f="qty" value="${esc(it.qty)}"></label>
+      <label>रेट (₹)<input type="number" step="any" min="0" inputmode="decimal" id="i_rate_${i}" data-i="${i}" data-f="rate" value="${esc(it.rate)}"></label>
+      <div class="lamt num" id="lamt_${i}">${inr(r2(it.qty*it.rate))}</div>
+      <button class="btn ghost small danger" data-del="${i}" aria-label="लाइन हटाएं" ${draft.items.length<2?"disabled":""}>✕</button>
+    </div>`).join("")}
+    <div><button class="btn" id="addLine">+ और सामान जोड़ें</button></div>
+  </section>
+  <section class="card">
+    <div class="row">
+      <label>छूट (₹)<input type="number" step="any" min="0" id="d_disc" inputmode="decimal" value="${esc(draft.discount||"")}" placeholder="0"></label>
+      <label>जमा राशि (₹)<input type="number" step="any" min="0" id="d_paid" inputmode="decimal" value="${esc(draft.paid)}" placeholder="${esc(c.total)} (पूरा)"></label>
+      <label>पेमेंट का तरीका<select id="d_mode">${MODES.map(m=>`<option ${m===draft.mode?"selected":""}>${m}</option>`).join("")}</select></label>
+    </div>
+    <div class="totals num" id="totalsBox">
+      ${s.gstOn?`<span class="muted">टैक्स योग्य राशि</span><span>${inr(c.sub)}</span><span class="muted">GST (CGST+SGST)</span><span>${inr(c.tax)}</span>`:""}
+      ${+draft.discount?`<span class="muted">छूट</span><span>-${inr(draft.discount)}</span>`:""}
+      <span class="grand">कुल</span><span class="grand">${inr(c.total)}</span>
+      ${c.total-paid>0.001?`<span class="due">बाकी (उधार)</span><span class="due">${inr(c.total-paid)}</span>`:""}
+    </div>
+    <div class="row"><button class="btn primary" id="saveBill" style="flex:2 1 200px">बिल सेव करें</button><button class="btn ghost" id="clearBill" style="flex:1 1 100px">साफ़ करें</button></div>
+  </section>`;
+  $("#d_cust").onchange=e=>{ draft.customerId=e.target.value; const cu=state.customers.find(x=>x.id===draft.customerId); draft.customerName=cu?cu.name:""; draft.customerPhone=cu?cu.phone:""; draft.customerGstin=cu?(cu.gstin||""):""; render(); };
+  $("#d_date").onchange=e=>{ draft.date=e.target.value||today(); };
+  if($("#d_cname")){ $("#d_cname").oninput=e=>draft.customerName=e.target.value; $("#d_cphone").oninput=e=>draft.customerPhone=e.target.value; $("#d_cgstin").oninput=e=>draft.customerGstin=e.target.value.toUpperCase(); }
+  v.querySelectorAll("[data-f]").forEach(inp=>{
+    inp.addEventListener(inp.dataset.f==="name"?"change":"input",e=>{
+      const it=draft.items[+inp.dataset.i]; const f=inp.dataset.f;
+      if(f==="name"){ it.name=e.target.value; const p=state.products.find(p=>p.name===it.name); if(p){ it.rate=+p.rate||0; it.unit=p.unit||it.unit; it.gst=p.gst!=null?+p.gst:it.gst; it.hsn=p.hsn||""; const ri=$("#i_rate_"+inp.dataset.i); if(ri) ri.value=it.rate; refreshTotals(); } }
+      else { it[f]=e.target.value===""?0:+e.target.value; refreshTotals(); }
+    });
+    if(inp.dataset.f==="name") inp.addEventListener("input",e=>{ draft.items[+inp.dataset.i].name=e.target.value; });
+  });
+  v.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ draft.items.splice(+b.dataset.del,1); render(); });
+  $("#addLine").onclick=()=>{ draft.items.push({name:"",qty:1,unit:"लीटर",rate:0,gst:5}); render(); const el=$("#i_name_"+(draft.items.length-1)); if(el) el.focus(); };
+  $("#d_disc").oninput=e=>{ draft.discount=+e.target.value||0; refreshTotals(); };
+  $("#d_paid").oninput=e=>{ draft.paid=e.target.value; refreshTotals(); };
+  $("#d_mode").onchange=e=>{ draft.mode=e.target.value; if(draft.mode==="उधार"){ draft.paid="0"; render(); } };
+  $("#clearBill").onclick=()=>{ draft=freshDraft(); render(); };
+  if($("#cancelEdit")) $("#cancelEdit").onclick=()=>{ draft=freshDraft(); render(); };
+  $("#saveBill").onclick=saveBill;
+}
+let totT;
+function totalsHtml(){ const s=S(); const c=calcBill(draft.items,draft.discount,s.gstOn,s.gstIncl); const paid=draft.paid===""?c.total:(+draft.paid||0);
+  return `${s.gstOn?`<span class="muted">टैक्स योग्य राशि</span><span>${inr(c.sub)}</span><span class="muted">GST (CGST+SGST)</span><span>${inr(c.tax)}</span>`:""}
+      ${+draft.discount?`<span class="muted">छूट</span><span>-${inr(draft.discount)}</span>`:""}
+      <span class="grand">कुल</span><span class="grand">${inr(c.total)}</span>
+      ${c.total-paid>0.001?`<span class="due">बाकी (उधार)</span><span class="due">${inr(c.total-paid)}</span>`:""}`; }
+function refreshTotals(){ const box=$("#totalsBox"); if(!box) return; box.innerHTML=totalsHtml();
+  draft.items.forEach((it,i)=>{ const el=$("#lamt_"+i); if(el) el.textContent=inr(r2(it.qty*it.rate)); });
+  const s=S(); const c=calcBill(draft.items,draft.discount,s.gstOn,s.gstIncl); const pi=$("#d_paid"); if(pi) pi.placeholder=c.total+" (पूरा)"; }
+
+async function saveBill(){
+  const s=S(); const items=draft.items.filter(it=>String(it.name).trim()&&(+it.qty>0));
+  if(!items.length){ toast("कम से कम एक सामान डालें"); return; }
+  let cid=draft.customerId, cname=draft.customerName.trim(), cphone=draft.customerPhone.trim();
+  if(!cid && cname){
+    const ex=state.customers.find(x=>(cphone&&phoneWa(x.phone)===phoneWa(cphone))||x.name.toLowerCase()===cname.toLowerCase());
+    if(ex){ cid=ex.id; cname=ex.name; cphone=ex.phone||cphone; }
+    else { cid=uid(); await save("customers",cid,{name:cname,phone:cphone,address:"",note:"",gstin:(draft.customerGstin||"").trim(),createdAt:Date.now()}); }
+  }
+  // remember new products and latest rates
+  for(const it of items){ const p=state.products.find(p=>p.name.toLowerCase()===String(it.name).trim().toLowerCase()); if(!p) await save("products",uid(),{name:String(it.name).trim(),unit:it.unit||"लीटर",rate:+it.rate||0,gst:+it.gst||5}); }
+  const c=calcBill(items,draft.discount,s.gstOn,s.gstIncl);
+  const paid = draft.paid===""?c.total:r2(+draft.paid||0);
+  const editing=!!draft.editId; const id=draft.editId||uid();
+  const bill={ no:editing?draft.editNo:nextBillNo(), date:draft.date||today(), customerId:cid||"", customerName:cname||"नकद ग्राहक", customerPhone:cphone||"", customerGstin:(state.customers.find(x=>x.id===cid)||{}).gstin||"",
+    items:items.map(it=>{ const pr=state.products.find(p=>p.name===String(it.name).trim())||{}; return {name:String(it.name).trim(),qty:+it.qty,unit:it.unit||"",rate:+it.rate,gst:pr.gst!=null?+pr.gst:(+it.gst||0),hsn:pr.hsn||it.hsn||""}; }),
+    discount:+draft.discount||0, sub:c.sub, tax:c.tax, total:c.total, paid, mode:draft.mode, gstOn:!!s.gstOn, createdAt:editing?(draft.editCreatedAt||Date.now()):Date.now(), createdBy:editing?(draft.createdBy||""):meName() };
+  if(editing){ bill.editedAt=Date.now(); bill.editedBy=meName(); }
+  await save("bills",id,bill);
+  draft=freshDraft(); toast(editing?"बिल बदल दिया गया":"बिल सेव हो गया");
+  openBill(id);
+}
+
+// ---------- Bill modal ----------
+let confirmDel=null;
+function openBill(id){
+  const b=state.bills.find(x=>x.id===id); if(!b) return;
+  const root=$("#modalRoot"); const due=billDue(b);
+  root.innerHTML=`<div class="modal" id="mbg"><div class="card" role="dialog" aria-label="बिल">
+    <div class="row" style="align-items:center"><h3>बिल ${esc(b.no)}</h3><button class="btn ghost small" id="mclose" style="flex:none">बंद करें</button></div>
+    <div class="receipt" id="rcpt"></div>
+    ${b.customerPhone?"":`<p class="notice" style="margin:0">इस बिल में नंबर नहीं है। व्हाट्सएप खुलने पर ग्राहक चुन लें।</p>`}
+    <div class="row">
+      <button class="btn primary" id="mpdf">PDF बिल बनाएं</button>
+      <a class="btn wa" target="_blank" rel="noopener" href="${esc(waLink(b.customerPhone,billText(b)))}">व्हाट्सएप खोलें</a>
+      <button class="btn" id="mcopy">टेक्स्ट कॉपी करें</button>
+    </div>
+    <p class="muted" style="margin:0;font-size:.85rem">“PDF बिल बनाएं” दबाएं, फिर “PDF भेजें” से सीधे WhatsApp चुनें और ग्राहक को भेज दें।</p>
+    <div class="row">
+      ${due>0?`<button class="btn" id="mpaid">पूरा पेमेंट मिल गया</button>`:""}
+      ${isAdmin()?`<button class="btn" id="medit">बिल बदलें</button><button class="btn ghost danger" id="mdel">${confirmDel===id?"पक्का हटाएं?":"बिल हटाएं"}</button>`:""}
+    </div>
+    ${b.createdBy||b.editedBy?`<p class="muted" style="margin:0;font-size:.8rem">${b.createdBy?"बनाया: "+esc(b.createdBy):""}${b.editedBy?" · आख़िरी बदलाव: "+esc(b.editedBy)+" ("+esc(new Date(b.editedAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}))+")":""}</p>`:""}
+  </div></div>`;
+  $("#rcpt").textContent=billText(b);
+  const close=()=>{ root.innerHTML=""; confirmDel=null; };
+  $("#mclose").onclick=close; $("#mbg").onclick=e=>{ if(e.target.id==="mbg") close(); };
+  $("#mpdf").onclick=()=>downloadPdf(b,$("#mpdf"));
+  $("#mcopy").onclick=()=>{ const t=billText(b); navigator.clipboard.writeText(t).then(()=>toast("कॉपी हो गया")).catch(()=>{ const r=document.createRange(); r.selectNodeContents($("#rcpt")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast("टेक्स्ट चुन लिया, कॉपी करें"); }); };
+  if($("#mpaid")) $("#mpaid").onclick=async()=>{ await save("bills",b.id,{...b,paid:b.total,mode:b.mode==="उधार"?"नकद":b.mode}); toast("पेमेंट दर्ज हो गया"); openBill(b.id); };
+  if($("#medit")) $("#medit").onclick=()=>{ root.innerHTML=""; confirmDel=null;
+    draft={ editId:b.id, editNo:b.no, editCreatedAt:b.createdAt, createdBy:b.createdBy||"", customerId:b.customerId||"", customerName:b.customerName==="नकद ग्राहक"?"":(b.customerName||""), customerPhone:b.customerPhone||"", customerGstin:b.customerGstin||"",
+      date:b.date, items:(b.items||[]).map(it=>({...it})), discount:b.discount||0, paid:(b.paid!=null&&+b.paid<+b.total)?String(b.paid):"", mode:b.mode||"नकद" };
+    if(draft.customerId&&!state.customers.some(x=>x.id===draft.customerId)) draft.customerId="";
+    tab="bill"; render(); window.scrollTo(0,0); };
+  if($("#mdel")) $("#mdel").onclick=async()=>{ if(confirmDel!==id){ confirmDel=id; openBill(id); return; } confirmDel=null; root.innerHTML=""; await removeRec("bills",id); toast("बिल हटा दिया"); };
+}
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") $("#modalRoot").innerHTML=""; });
+
+// ---------- Saving and sharing files ----------
+function blobToB64(blob){ return new Promise((r,j)=>{ const fr=new FileReader(); fr.onload=()=>r(String(fr.result).split(",")[1]); fr.onerror=j; fr.readAsDataURL(blob); }); }
+async function saveFile(name,blob,{share=false,text=""}={}){
+  const C=window.Capacitor;
+  if(C&&C.isNativePlatform&&C.isNativePlatform()&&C.Plugins&&C.Plugins.Filesystem&&C.Plugins.Share){
+    const w=await C.Plugins.Filesystem.writeFile({path:name,data:await blobToB64(blob),directory:"CACHE"});
+    try{ await C.Plugins.Share.share({title:name,text,files:[w.uri],dialogTitle:"भेजें"}); }catch(_){ }
+    return "shared";
+  }
+  if(share){ const file=new File([blob],name,{type:blob.type||"application/octet-stream"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file],title:name,text}); return "shared"; }catch(e){ if(e&&e.name==="AbortError") return "cancel"; } } }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },5000);
+  return "downloaded";
+}
+
+// ---------- PDF invoice ----------
+function invoiceHtml(b){
+  const s=S(); const gst=!!b.gstOn; const c=calcBill(b.items||[],b.discount,gst,s.gstIncl);
+  const due=billDue(b);
+  const th='style="border:1px solid #333;padding:6px 6px;background:#f1efe4;font-size:12px;text-align:left"';
+  const td='style="border:1px solid #333;padding:6px 6px;font-size:13px;vertical-align:top"';
+  const tdr='style="border:1px solid #333;padding:6px 6px;font-size:13px;text-align:right;white-space:nowrap"';
+  const money=n=>(Math.round(n*100)/100).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+  // tax summary by rate
+  const byRate={}; (b.items||[]).forEach((it,i)=>{ const l=c.lines[i]; if(!l||!l.g) return; byRate[l.g]=byRate[l.g]||{base:0,tax:0}; byRate[l.g].base+=l.base; byRate[l.g].tax+=l.tax; });
+  return `<div style="width:794px;padding:36px 40px;background:#fff;color:#111;font-family:Mukta,'Noto Sans Devanagari',Arial,sans-serif;line-height:1.35">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1d5e2c;padding-bottom:12px">
+    <div><div style="font-family:'Baloo 2',Mukta,sans-serif;font-size:30px;font-weight:700;color:#1d5e2c;line-height:1">${esc(s.name)}</div>
+      <div style="font-size:12px;color:#7a5a0c;letter-spacing:.06em;margin-top:4px">शुद्ध · प्राकृतिक · बिना रिफाइन · कोल्ड प्रेस</div>
+      <div style="font-size:13px;margin-top:6px;max-width:420px">${esc(s.address)}</div>
+      <div style="font-size:13px">फ़ोन / WhatsApp: ${esc(s.phone)}</div>
+      ${gst&&s.gstin?`<div style="font-size:13px;font-weight:700">GSTIN: ${esc(s.gstin)}</div>`:""}</div>
+    <div style="text-align:right"><div style="font-size:20px;font-weight:700;letter-spacing:.04em">${gst?"TAX INVOICE":"BILL / INVOICE"}</div>
+      <div style="font-size:13px;margin-top:6px">Invoice No: <b>${esc(b.no)}</b></div>
+      <div style="font-size:13px">Date: <b>${esc(showDate(b.date))}</b></div>
+      ${gst?`<div style="font-size:13px">Place of Supply: Haryana (06)</div>`:""}</div>
+  </div>
+  <div style="margin:14px 0;font-size:13px"><div style="font-size:11px;color:#555;letter-spacing:.06em">BILL TO</div>
+    <div style="font-size:16px;font-weight:700">${esc(b.customerName||"Cash Customer")}</div>
+    ${b.customerPhone?`<div>Phone: ${esc(b.customerPhone)}</div>`:""}
+    ${gst&&b.customerGstin?`<div>GSTIN: ${esc(b.customerGstin)}</div>`:""}</div>
+  <table style="width:100%;border-collapse:collapse">
+    <tr><th ${th}>#</th><th ${th}>Item</th>${gst?`<th ${th}>HSN</th>`:""}<th ${th}>Qty</th><th ${th}>Rate${gst&&s.gstIncl?" (incl. GST)":""}</th>${gst?`<th ${th}>Taxable</th><th ${th}>GST</th>`:""}<th ${th}>Amount</th></tr>
+    ${(b.items||[]).map((it,i)=>{ const l=c.lines[i]||{base:0,tax:0,g:0}; return `<tr><td ${td}>${i+1}</td><td ${td}>${esc(it.name)}</td>${gst?`<td ${td}>${esc(it.hsn||"")}</td>`:""}<td ${tdr}>${esc(it.qty)} ${esc(it.unit||"")}</td><td ${tdr}>${money(it.rate)}</td>${gst?`<td ${tdr}>${money(l.base)}</td><td ${tdr}>${esc(l.g)}%</td>`:""}<td ${tdr}>${money(r2(it.qty*it.rate))}</td></tr>`; }).join("")}
+  </table>
+  <div style="display:flex;justify-content:space-between;gap:24px;margin-top:14px">
+    <div style="flex:1;font-size:12px">
+      ${gst&&Object.keys(byRate).length?`<table style="border-collapse:collapse;width:100%"><tr><th ${th}>GST Rate</th><th ${th}>Taxable</th><th ${th}>CGST</th><th ${th}>SGST</th></tr>
+        ${Object.entries(byRate).map(([g,v])=>`<tr><td ${td}>${g}%</td><td ${tdr}>${money(v.base)}</td><td ${tdr}>${money(r2(r2(v.tax)/2))} (${g/2}%)</td><td ${tdr}>${money(r2(r2(v.tax)-r2(r2(v.tax)/2)))} (${g/2}%)</td></tr>`).join("")}</table>`:""}
+      <div style="margin-top:10px;font-size:13px"><b>Amount in words:</b> ${esc(inWords(b.total||0))}</div>
+    </div>
+    <table style="border-collapse:collapse;min-width:260px;font-size:13px">
+      ${b.discount?`<tr><td style="padding:4px 8px">Discount</td><td style="padding:4px 8px;text-align:right">- ${money(b.discount)}</td></tr>`:""}
+      ${gst?`<tr><td style="padding:4px 8px">Taxable Value</td><td style="padding:4px 8px;text-align:right">${money(c.sub)}</td></tr>
+      <tr><td style="padding:4px 8px">CGST</td><td style="padding:4px 8px;text-align:right">${money(r2(c.tax/2))}</td></tr>
+      <tr><td style="padding:4px 8px">SGST</td><td style="padding:4px 8px;text-align:right">${money(r2(c.tax-r2(c.tax/2)))}</td></tr>`:""}
+      <tr><td style="padding:8px;font-weight:700;font-size:16px;border-top:2px solid #1d5e2c">Grand Total</td><td style="padding:8px;text-align:right;font-weight:700;font-size:16px;border-top:2px solid #1d5e2c">₹ ${money(b.total)}</td></tr>
+      <tr><td style="padding:4px 8px">Paid (${esc(b.mode||"")})</td><td style="padding:4px 8px;text-align:right">${money(b.paid||0)}</td></tr>
+      ${due>0?`<tr><td style="padding:4px 8px;color:#b3261e;font-weight:700">Balance Due</td><td style="padding:4px 8px;text-align:right;color:#b3261e;font-weight:700">${money(due)}</td></tr>`:""}
+    </table>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:40px;font-size:12px;color:#444">
+    <div>${esc(s.footer)}<br>This is a computer generated invoice.</div>
+    <div style="text-align:center"><div style="height:40px"></div><div style="border-top:1px solid #333;padding-top:4px;min-width:200px">For ${esc(s.name)}<br>Authorised Signatory</div></div>
+  </div></div>`;
+}
+async function downloadPdf(b,btn){
+  if(!window.html2canvas||!window.jspdf){ toast("PDF बनाने वाला हिस्सा लोड नहीं हुआ, पेज दोबारा खोलें"); return; }
+  const old=btn.textContent; btn.disabled=true; btn.textContent="PDF बन रहा है…";
+  const host=document.createElement("div"); host.style.cssText="position:fixed;left:-10000px;top:0;z-index:-1"; host.innerHTML=invoiceHtml(b); document.body.appendChild(host);
+  try{
+    try{ await document.fonts.ready; }catch(_){}
+    const canvas=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false});
+    const pdf=new window.jspdf.jsPDF({unit:"mm",format:"a4",compress:true});
+    const pw=210, ph=297, ih=canvas.height*pw/canvas.width; const img=canvas.toDataURL("image/jpeg",0.92);
+    let y=0; pdf.addImage(img,"JPEG",0,0,pw,ih); while(ih+y>ph+1){ y-=ph; pdf.addPage(); pdf.addImage(img,"JPEG",0,y,pw,ih); }
+    const blob=pdf.output("blob"); const fname=(b.no+"_"+(b.customerName||"bill")).replace(/[^\w\u0900-\u097F-]+/g,"_")+".pdf";
+    host.remove(); btn.disabled=false; btn.textContent="📤 PDF भेजें (WhatsApp)";
+    btn.onclick=async()=>{ const r=await saveFile(fname,blob,{share:true,text:"आपका बिल "+b.no+" · "+inr(b.total)+" · "+S().name}); if(r==="downloaded") toast("PDF डाउनलोड हो गया, अब WhatsApp में 📎 से भेजें"); };
+    toast("PDF तैयार है, अब “PDF भेजें” दबाएं");
+  }catch(e){ host.remove(); btn.disabled=false; btn.textContent=old; toast("PDF नहीं बन पाया"); }
+}
+
+// ---------- Bills list ----------
+function viewBills(v){
+  let bs=state.bills.slice().sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt)||(b.createdAt-a.createdAt));
+  const q=ui.billQ.trim().toLowerCase();
+  if(q) bs=bs.filter(b=>(b.customerName+" "+b.no+" "+b.customerPhone).toLowerCase().includes(q));
+  if(ui.billFrom) bs=bs.filter(b=>b.date>=ui.billFrom); if(ui.billTo) bs=bs.filter(b=>b.date<=ui.billTo);
+  const tot=bs.reduce((a,b)=>a+(b.total||0),0);
+  v.innerHTML=`<h2>सारे बिल</h2>
+  <section class="card">
+    <div class="row">
+      <label>खोजें<input id="bq" value="${esc(ui.billQ)}" placeholder="ग्राहक, नंबर या बिल नं"></label>
+      <label>से<input type="date" id="bf" value="${esc(ui.billFrom)}"></label>
+      <label>तक<input type="date" id="bt" value="${esc(ui.billTo)}"></label>
+    </div>
+    <div class="muted">${bs.length} बिल · कुल <b class="num" style="color:var(--fg)">${inr(tot)}</b></div>
+    <div class="list">${bs.length?bs.map(b=>{ const due=billDue(b); return `<div class="li">
+      <div class="main"><b>${esc(b.customerName)}</b><span class="muted" style="font-size:.85rem">${esc(b.no)} · ${esc(showDate(b.date))} · ${esc(b.mode||"")}</span></div>
+      <div class="num" style="text-align:right"><b>${inr(b.total)}</b><br>${due>0?`<span class="pill due">बाकी ${inr(due)}</span>`:`<span class="pill ok">पूरा जमा</span>`}</div>
+      <div class="acts"><button class="btn small" data-open="${esc(b.id)}">देखें / PDF</button><a class="btn small wa" target="_blank" rel="noopener" href="${esc(waLink(b.customerPhone,billText(b)))}">व्हाट्सएप</a></div>
+    </div>`;}).join(""):`<div class="empty">अभी कोई बिल नहीं है।<br><button class="btn primary" data-tab="bill" style="margin-top:10px">पहला बिल बनाएं</button></div>`}</div>
+  </section>`;
+  $("#bq").oninput=e=>{ ui.billQ=e.target.value; render(); };
+  $("#bf").onchange=e=>{ ui.billFrom=e.target.value; render(); };
+  $("#bt").onchange=e=>{ ui.billTo=e.target.value; render(); };
+  v.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openBill(b.dataset.open));
+}
+
+// ---------- Sales report ----------
+function viewReport(v){
+  const bs=state.bills; const t=today(); const yd=ymd(new Date(Date.now()-864e5)); const ym=t.slice(0,7);
+  const sum=f=>{ const x=bs.filter(f); return {n:x.length, amt:r2(x.reduce((a,b)=>a+(b.total||0),0))}; };
+  const tD=sum(b=>b.date===t), yD=sum(b=>b.date===yd), mD=sum(b=>b.date.slice(0,7)===ym), all=sum(()=>true);
+  const dueAll=r2(bs.reduce((a,b)=>a+Math.max(0,billDue(b)),0));
+  // last 30 days bars
+  const days=[]; for(let i=29;i>=0;i--){ const d=ymd(new Date(Date.now()-i*864e5)); days.push({d,amt:bs.filter(b=>b.date===d).reduce((a,b)=>a+(b.total||0),0)}); }
+  const mx=Math.max(1,...days.map(x=>x.amt));
+  // day-wise for chosen month
+  const [yy,mm]=ui.repMonth.split("-").map(Number); const nd=new Date(yy,mm,0).getDate();
+  const dayRows=[]; for(let d=1;d<=nd;d++){ const ds=ui.repMonth+"-"+pad(d); const x=bs.filter(b=>b.date===ds); if(x.length) dayRows.push({ds,n:x.length,amt:x.reduce((a,b)=>a+(b.total||0),0),paid:x.reduce((a,b)=>a+(b.paid||0),0)}); }
+  const mTot=dayRows.reduce((a,r)=>a+r.amt,0);
+  // month-wise for chosen year
+  const monRows=MONTHS.map((n,i)=>{ const k=ui.repYear+"-"+pad(i+1); const x=bs.filter(b=>b.date.slice(0,7)===k); return {k,n,c:x.length,amt:x.reduce((a,b)=>a+(b.total||0),0)}; });
+  const years=[...new Set([t.slice(0,4),...bs.map(b=>b.date.slice(0,4))])].sort().reverse();
+  // top products this month
+  const prod={}; bs.filter(b=>b.date.slice(0,7)===ui.repMonth).forEach(b=>(b.items||[]).forEach(it=>{ const k=it.name; prod[k]=prod[k]||{q:0,amt:0,u:it.unit}; prod[k].q+=+it.qty; prod[k].amt+=it.qty*it.rate; }));
+  const prodRows=Object.entries(prod).sort((a,b)=>b[1].amt-a[1].amt).slice(0,8);
+  const seenModes=[...new Set([...MODES,...bs.map(b=>b.mode).filter(Boolean)])];
+  const modeRows=seenModes.map(m=>{ const pick=f=>m==="उधार"?bs.filter(f).reduce((a,b)=>a+Math.max(0,billDue(b)),0):bs.filter(b=>f(b)&&b.mode===m).reduce((a,b)=>a+(+b.paid||0),0);
+    return {m,t:r2(pick(b=>b.date===t)),mo:r2(pick(b=>b.date.slice(0,7)===ui.repMonth))}; });
+  v.innerHTML=`<h2>सेल रिपोर्ट</h2>
+  <div class="stats">
+    <div class="stat"><div class="k">आज</div><div class="v num">${inr(tD.amt)}</div><div class="s">${tD.n} बिल</div></div>
+    <div class="stat"><div class="k">कल</div><div class="v num">${inr(yD.amt)}</div><div class="s">${yD.n} बिल</div></div>
+    <div class="stat"><div class="k">इस महीने</div><div class="v num">${inr(mD.amt)}</div><div class="s">${mD.n} बिल</div></div>
+    <div class="stat"><div class="k">अब तक कुल</div><div class="v num">${inr(all.amt)}</div><div class="s">बाकी उधार <span class="due">${inr(dueAll)}</span></div></div>
+  </div>
+  <section class="card">
+    <h3>पिछले 30 दिन</h3>
+    <div class="bars" role="img" aria-label="पिछले 30 दिन की रोज़ की सेल">${days.map(x=>`<div class="${x.d===t?"today":""}" style="height:${(x.amt/mx*100).toFixed(1)}%" title="${esc(showDate(x.d))}: ${esc(inr(x.amt))}"></div>`).join("")}</div>
+    <div class="barlbl"><span>${esc(showDate(days[0].d))}</span><span>सबसे ज़्यादा: ${inr(mx===1&&!days.some(x=>x.amt)?0:mx)}</span><span>आज</span></div>
+  </section>
+  <section class="card">
+    <div class="row" style="align-items:center"><h3>दिन के हिसाब से</h3><label style="flex:0 1 200px">महीना<input type="month" id="rm" value="${esc(ui.repMonth)}"></label></div>
+    <div class="tablebox"><table class="num"><thead><tr><th>तारीख</th><th class="r">बिल</th><th class="r">सेल</th><th class="r">जमा</th></tr></thead><tbody>
+    ${dayRows.length?dayRows.map(r=>`<tr><td>${esc(showDate(r.ds))}</td><td class="r">${r.n}</td><td class="r">${inr(r.amt)}</td><td class="r">${inr(r.paid)}</td></tr>`).join("")+`<tr><td><b>${esc(monthName(ui.repMonth))} कुल</b></td><td class="r"><b>${dayRows.reduce((a,r)=>a+r.n,0)}</b></td><td class="r"><b>${inr(mTot)}</b></td><td class="r"><b>${inr(dayRows.reduce((a,r)=>a+r.paid,0))}</b></td></tr>`:`<tr><td colspan="4" class="empty">${esc(monthName(ui.repMonth))} में कोई बिल नहीं</td></tr>`}
+    </tbody></table></div>
+  </section>
+  <section class="card">
+    <div class="row" style="align-items:center"><h3>महीने के हिसाब से</h3><label style="flex:0 1 140px">साल<select id="ry">${years.map(y=>`<option ${y===ui.repYear?"selected":""}>${y}</option>`).join("")}</select></label></div>
+    <div class="tablebox"><table class="num"><thead><tr><th>महीना</th><th class="r">बिल</th><th class="r">सेल</th></tr></thead><tbody>
+    ${monRows.map(r=>`<tr><td>${r.n}</td><td class="r">${r.c||"–"}</td><td class="r">${r.amt?inr(r.amt):"–"}</td></tr>`).join("")}
+    <tr><td><b>${esc(ui.repYear)} कुल</b></td><td class="r"><b>${monRows.reduce((a,r)=>a+r.c,0)}</b></td><td class="r"><b>${inr(monRows.reduce((a,r)=>a+r.amt,0))}</b></td></tr>
+    </tbody></table></div>
+  </section>
+  <section class="card">
+    <h3>पेमेंट मोड के हिसाब से</h3>
+    <div class="tablebox"><table class="num"><thead><tr><th>मोड</th><th class="r">आज</th><th class="r">${esc(monthName(ui.repMonth))}</th></tr></thead><tbody>
+    ${modeRows.map(r=>`<tr><td>${esc(r.m)}</td><td class="r">${r.t?inr(r.t):"–"}</td><td class="r">${r.mo?inr(r.mo):"–"}</td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="muted" style="margin:0;font-size:.85rem">उधार = बिल का जो पैसा अभी बाकी है।</p>
+  </section>
+  <section class="card">
+    <h3>CA के लिए फ़ाइल</h3>
+    <p class="muted" style="margin:0;font-size:.9rem">${esc(monthName(ui.repMonth))} के सारे बिल (GST के हिसाब के साथ) Excel में खुलने वाली फ़ाइल में।</p>
+    <div><button class="btn" id="salesCsv">सेल रजिस्टर डाउनलोड करें (Excel)</button></div>
+  </section>
+  <section class="card">
+    <h3>${esc(monthName(ui.repMonth))} में सबसे ज़्यादा बिकने वाले</h3>
+    ${prodRows.length?`<div class="tablebox"><table class="num"><thead><tr><th>प्रोडक्ट</th><th class="r">मात्रा</th><th class="r">सेल</th></tr></thead><tbody>${prodRows.map(([n,p])=>`<tr><td>${esc(n)}</td><td class="r">${r2(p.q)} ${esc(p.u||"")}</td><td class="r">${inr(p.amt)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">इस महीने अभी कोई सेल नहीं</div>`}
+  </section>`;
+  $("#rm").onchange=e=>{ if(e.target.value){ ui.repMonth=e.target.value; render(); } };
+  $("#salesCsv").onclick=()=>{ const rows=bs.filter(b=>b.date.slice(0,7)===ui.repMonth).sort((a,b)=>a.date.localeCompare(b.date)||String(a.no).localeCompare(String(b.no)));
+    if(!rows.length){ toast("इस महीने कोई बिल नहीं"); return; }
+    const head=["Invoice No","Date","Customer","Customer GSTIN","Phone","Taxable Value","CGST","SGST","Total","Paid","Payment Mode","Balance Due","Items"];
+    const data=rows.map(b=>{ const cg=r2((b.tax||0)/2); return [b.no,showDate(b.date),b.customerName,b.customerGstin||"",b.customerPhone||"",b.gstOn?b.sub:b.total,b.gstOn?cg:0,b.gstOn?r2((b.tax||0)-cg):0,b.total,b.paid||0,b.mode||"",billDue(b),(b.items||[]).map(it=>it.name+" "+it.qty+" "+(it.unit||"")+(it.hsn?" HSN "+it.hsn:"")).join("; ")]; });
+    saveCsv("Sales_"+ui.repMonth+".csv",head,data); };
+  $("#ry").onchange=e=>{ ui.repYear=e.target.value; render(); };
+}
+
+// ---------- Customers ----------
+function viewCustomers(v){
+  const q=ui.custQ.trim().toLowerCase();
+  let cs=state.customers.map(c=>({...c,st:custStats(c.id)}));
+  if(q){ const qd=q.replace(/\D/g,""); cs=cs.filter(c=>(c.name+" "+(c.phone||"")+" "+(c.address||"")+" "+(c.gstin||"")+" "+(c.note||"")).toLowerCase().includes(q)||(qd.length>=4&&String(c.phone||"").replace(/\D/g,"").includes(qd))); }
+  cs.sort((a,b)=>b.st.due-a.st.due||a.name.localeCompare(b.name));
+  v.innerHTML=`<div class="row" style="align-items:center"><h2>ग्राहक</h2><button class="btn primary" id="addC" style="flex:none">+ नया ग्राहक</button></div>
+  <section class="card">
+    <label>ग्राहक खोजें<input id="cq" value="${esc(ui.custQ)}" placeholder="नाम, GSTIN, पता या फ़ोन नंबर"></label>
+    <div class="list">${cs.length?cs.map(c=>`<div class="li">
+      <div class="main"><b>${esc(c.name)}</b><span class="muted" style="font-size:.85rem">${esc(c.phone||"नंबर नहीं")}${c.gstin?" · GSTIN "+esc(c.gstin):""}${c.address?" · "+esc(c.address):""}</span>
+        <span class="muted num" style="font-size:.85rem;display:block">${c.st.count} बिल · कुल ${inr(c.st.total)}${c.st.last?" · आख़िरी "+esc(showDate(c.st.last)):""}</span></div>
+      ${c.st.due>0?`<span class="pill due num">बाकी ${inr(c.st.due)}</span>`:""}
+      <div class="acts">
+        ${c.phone?`<a class="btn small wa" target="_blank" rel="noopener" href="${esc(waLink(c.phone, c.st.due>0?`नमस्ते ${c.name} जी, ${S().name} का आपका ${inr(c.st.due)} बकाया है। कृपया जल्द भुगतान करें। धन्यवाद 🙏`:`नमस्ते ${c.name} जी, `))}">${c.st.due>0?"बकाया याद दिलाएं":"व्हाट्सएप"}</a>`:""}
+        <button class="btn small primary" data-detail="${esc(c.id)}">पूरा हिसाब</button>
+        <button class="btn small" data-bill="${esc(c.id)}">बिल बनाएं</button>
+        <button class="btn small ghost" data-edit="${esc(c.id)}">बदलें</button>
+      </div></div>`).join(""):`<div class="empty">${q?"कोई ग्राहक नहीं मिला":"अभी कोई ग्राहक नहीं है। बिल बनाते समय नाम और नंबर डालेंगे तो ग्राहक यहाँ अपने आप जुड़ जाएगा, या ऊपर “+ नया ग्राहक” दबाएं।"}</div>`}</div>
+  </section>`;
+  $("#cq").oninput=e=>{ ui.custQ=e.target.value; render(); };
+  $("#addC").onclick=()=>editCustomer(null);
+  v.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editCustomer(b.dataset.edit));
+  v.querySelectorAll("[data-detail]").forEach(b=>b.onclick=()=>openCustomer(b.dataset.detail));
+  v.querySelectorAll("[data-bill]").forEach(b=>b.onclick=()=>{ const c=state.customers.find(x=>x.id===b.dataset.bill); draft=freshDraft(); draft.customerId=c.id; draft.customerName=c.name; draft.customerPhone=c.phone||""; tab="bill"; render(); window.scrollTo(0,0); });
+}
+function openCustomer(id){
+  const c=state.customers.find(x=>x.id===id); if(!c) return; const st=custStats(id);
+  const bs=state.bills.filter(b=>b.customerId===id).sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt-a.createdAt));
+  const prod={}; bs.forEach(b=>(b.items||[]).forEach(it=>{ prod[it.name]=prod[it.name]||{q:0,amt:0,u:it.unit}; prod[it.name].q+=+it.qty; prod[it.name].amt+=it.qty*it.rate; }));
+  const root=$("#modalRoot");
+  root.innerHTML=`<div class="modal" id="mbg"><div class="card" role="dialog" aria-label="ग्राहक का हिसाब">
+    <div class="row" style="align-items:center"><h3>${esc(c.name)}</h3><button class="btn ghost small" id="mclose" style="flex:none">बंद करें</button></div>
+    <div class="muted" style="font-size:.9rem">${esc(c.phone||"नंबर नहीं")}${c.gstin?" · GSTIN "+esc(c.gstin):""}${c.address?"<br>"+esc(c.address):""}${c.note?"<br>नोट: "+esc(c.note):""}</div>
+    <div class="stats" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat"><div class="k">कुल ख़रीद</div><div class="v num" style="font-size:1.15rem">${inr(st.total)}</div><div class="s">${st.count} बिल</div></div>
+      <div class="stat"><div class="k">बाकी</div><div class="v num ${st.due>0?"due":""}" style="font-size:1.15rem">${inr(st.due)}</div></div>
+      <div class="stat"><div class="k">आख़िरी बार</div><div class="v num" style="font-size:1.15rem">${esc(showDate(st.last)||"–")}</div></div>
+    </div>
+    ${Object.keys(prod).length?`<div class="tablebox"><table class="num"><thead><tr><th>क्या ख़रीदा</th><th class="r">कुल मात्रा</th><th class="r">रकम</th></tr></thead><tbody>${Object.entries(prod).sort((a,b)=>b[1].amt-a[1].amt).map(([n,p])=>`<tr><td>${esc(n)}</td><td class="r">${r2(p.q)} ${esc(p.u||"")}</td><td class="r">${inr(p.amt)}</td></tr>`).join("")}</tbody></table></div>`:""}
+    <h3>सारे बिल</h3>
+    <div class="list">${bs.length?bs.map(b=>{ const due=billDue(b); return `<div class="li"><div class="main"><b>${esc(b.no)} · ${esc(showDate(b.date))}</b><span class="muted" style="font-size:.85rem">${esc((b.items||[]).map(it=>it.name+" "+it.qty+" "+(it.unit||"")).join(", "))} · ${esc(b.mode||"")}</span></div>
+      <div class="num" style="text-align:right"><b>${inr(b.total)}</b><br>${due>0?`<span class="pill due">बाकी ${inr(due)}</span>`:`<span class="pill ok">जमा</span>`}</div>
+      <button class="btn small" data-ob="${esc(b.id)}">देखें / PDF</button></div>`; }).join(""):`<div class="empty">इस ग्राहक का अभी कोई बिल नहीं</div>`}</div>
+  </div></div>`;
+  $("#mclose").onclick=()=>{ root.innerHTML=""; }; $("#mbg").onclick=e=>{ if(e.target.id==="mbg") root.innerHTML=""; };
+  root.querySelectorAll("[data-ob]").forEach(b=>b.onclick=()=>openBill(b.dataset.ob));
+}
+let confirmCDel=null;
+function editCustomer(id){
+  const c=id?state.customers.find(x=>x.id===id):{name:"",phone:"",address:"",note:""};
+  const root=$("#modalRoot");
+  root.innerHTML=`<div class="modal" id="mbg"><form class="card" id="cf">
+    <h3>${id?"ग्राहक बदलें":"नया ग्राहक"}</h3>
+    <label>नाम<input id="c_name" required value="${esc(c.name)}"></label>
+    <label>व्हाट्सएप नंबर<input id="c_phone" inputmode="tel" value="${esc(c.phone||"")}" placeholder="10 अंक का नंबर"></label>
+    <label>पता / शहर<input id="c_addr" value="${esc(c.address||"")}"></label>
+    <label>ग्राहक का GSTIN (अगर दुकान/कंपनी है)<input id="c_gstin" value="${esc(c.gstin||"")}" placeholder="ज़रूरी नहीं"></label>
+    <label>नोट<input id="c_note" value="${esc(c.note||"")}" placeholder="जैसे: हर महीने 2 टिन लेते हैं"></label>
+    <div class="row"><button class="btn primary" type="submit">सेव करें</button><button class="btn ghost" type="button" id="cx">रद्द करें</button>
+    ${id&&isAdmin()?`<button class="btn ghost danger" type="button" id="cdel">${confirmCDel===id?"पक्का हटाएं?":"ग्राहक हटाएं"}</button>`:""}</div>
+  </form></div>`;
+  const close=()=>{ root.innerHTML=""; confirmCDel=null; };
+  $("#cx").onclick=close; $("#mbg").onclick=e=>{ if(e.target.id==="mbg") close(); };
+  $("#cf").onsubmit=async e=>{ e.preventDefault(); const name=$("#c_name").value.trim(); if(!name) return;
+    const nid=id||uid(); await save("customers",nid,{...(id?c:{createdAt:Date.now()}),name,phone:$("#c_phone").value.trim(),address:$("#c_addr").value.trim(),note:$("#c_note").value.trim(),gstin:$("#c_gstin").value.trim().toUpperCase()}); close(); toast("ग्राहक सेव हो गया"); };
+  if($("#cdel")) $("#cdel").onclick=async()=>{ if(confirmCDel!==id){ confirmCDel=id; editCustomer(id); return; } close(); await removeRec("customers",id); toast("ग्राहक हटा दिया"); };
+  $("#c_name").focus();
+}
+
+// ---------- CSV for CA ----------
+async function saveCsv(name,head,rows){
+  const cell=v=>{ const t=String(v==null?"":v); return /[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t; };
+  const csv="﻿"+[head,...rows].map(r=>r.map(cell).join(",")).join("\r\n");
+  try{ await saveFile(name,new Blob([csv],{type:"text/csv"})); toast("फ़ाइल तैयार है"); }catch(e){ toast("फ़ाइल सेव नहीं हुई"); }
+}
+
+// ---------- Purchases ----------
+function viewPurchases(v){
+  if(!ui.purMonth) ui.purMonth=today().slice(0,7);
+  const ps=state.purchases.filter(p=>String(p.date||"").slice(0,7)===ui.purMonth).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const sum=f=>r2(ps.reduce((a,p)=>a+(+p[f]||0),0));
+  const gstIn=r2(sum("cgst")+sum("sgst")+sum("igst"));
+  v.innerHTML=`<div class="row" style="align-items:center"><h2>ख़रीद (Purchase)</h2><button class="btn primary" id="addPur" style="flex:none">+ ख़रीद बिल डालें</button></div>
+  <section class="card">
+    <div class="row"><label style="flex:0 1 200px">महीना<input type="month" id="pm" value="${esc(ui.purMonth)}"></label><div style="flex:1 1 200px;display:flex;justify-content:flex-end"><button class="btn" id="purCsv">CA के लिए डाउनलोड (Excel)</button></div></div>
+    <div class="stats">
+      <div class="stat"><div class="k">ख़रीद बिल</div><div class="v num">${ps.length}</div></div>
+      <div class="stat"><div class="k">टैक्स योग्य</div><div class="v num">${inr(sum("taxable"))}</div></div>
+      <div class="stat"><div class="k">GST (इनपुट)</div><div class="v num">${inr(gstIn)}</div></div>
+      <div class="stat"><div class="k">कुल ख़रीद</div><div class="v num">${inr(sum("total"))}</div></div>
+    </div>
+    <div class="list">${ps.length?ps.map(p=>`<div class="li">
+      <div class="main"><b>${esc(p.supplier||"सप्लायर")}</b><span class="muted" style="font-size:.85rem">${esc(p.invoiceNo||"")} · ${esc(showDate(p.date))}${p.supplierGstin?" · "+esc(p.supplierGstin):""}</span></div>
+      <div class="num" style="text-align:right"><b>${inr(p.total)}</b><br><span class="muted" style="font-size:.8rem">GST ${inr((+p.cgst||0)+(+p.sgst||0)+(+p.igst||0))}</span></div>
+      <div class="acts"><button class="btn small ghost" data-pe="${esc(p.id)}">बदलें</button></div>
+    </div>`).join(""):`<div class="empty">${esc(monthName(ui.purMonth))} में कोई ख़रीद बिल नहीं।<br>सप्लायर का बिल दर्ज करने के लिए ऊपर “+ ख़रीद बिल डालें” दबाएं।</div>`}</div>
+  </section>`;
+  $("#pm").onchange=e=>{ if(e.target.value){ ui.purMonth=e.target.value; render(); } };
+  $("#addPur").onclick=()=>editPurchase(null);
+  v.querySelectorAll("[data-pe]").forEach(b=>b.onclick=()=>editPurchase(b.dataset.pe));
+  $("#purCsv").onclick=()=>{ if(!ps.length){ toast("इस महीने कोई ख़रीद नहीं"); return; }
+    saveCsv("Purchases_"+ui.purMonth+".csv",["Date","Supplier","Supplier GSTIN","Invoice No","Taxable Value","CGST","SGST","IGST","Total","Payment Mode","Items"],
+      ps.slice().reverse().map(p=>[showDate(p.date),p.supplier,p.supplierGstin,p.invoiceNo,p.taxable,p.cgst,p.sgst,p.igst,p.total,p.mode||"",p.items||""])); };
+}
+async function fileToImages(file){
+  if(file.type.startsWith("image/")) return [file];
+  if(!window.pdfjsLib) throw new Error("pdf");
+  const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise; const out=[];
+  for(let i=1;i<=Math.min(3,pdf.numPages);i++){
+    const page=await pdf.getPage(i); const vp=page.getViewport({scale:1.6}); const c=document.createElement("canvas"); c.width=vp.width; c.height=vp.height;
+    await page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;
+    out.push(await new Promise(r=>c.toBlob(r,"image/jpeg",0.85)));
+  }
+  return out;
+}
+let confirmPurDel=null;
+function editPurchase(id){
+  const p=id?state.purchases.find(x=>x.id===id):{supplier:"",supplierGstin:"",invoiceNo:"",date:today(),taxable:"",cgst:"",sgst:"",igst:"",total:"",mode:"बैंक ट्रांसफर",items:""};
+  let file=null;
+  const root=$("#modalRoot");
+  root.innerHTML=`<div class="modal" id="mbg"><form class="card" id="purf">
+    <div class="row" style="align-items:center"><h3>${id?"ख़रीद बिल बदलें":"नया ख़रीद बिल"}</h3><button class="btn ghost small" type="button" id="px2" style="flex:none">बंद करें</button></div>
+        <div class="row"><label>सप्लायर का नाम<input id="f_sup" value="${esc(p.supplier)}" required></label><label>सप्लायर GSTIN<input id="f_sg" value="${esc(p.supplierGstin)}"></label></div>
+    <div class="row"><label>बिल नंबर<input id="f_no" value="${esc(p.invoiceNo)}"></label><label>तारीख<input type="date" id="f_date" value="${esc(p.date)}" required></label></div>
+    <div class="row"><label>टैक्स योग्य राशि<input type="number" step="any" id="f_tx" value="${esc(p.taxable)}"></label><label>CGST<input type="number" step="any" id="f_cg" value="${esc(p.cgst)}"></label><label>SGST<input type="number" step="any" id="f_sgst" value="${esc(p.sgst)}"></label><label>IGST<input type="number" step="any" id="f_ig" value="${esc(p.igst)}"></label></div>
+    <div class="row"><label>कुल राशि<input type="number" step="any" id="f_tot" value="${esc(p.total)}" required></label><label>पेमेंट<select id="f_mode">${MODES.map(m=>`<option ${m===p.mode?"selected":""}>${m}</option>`).join("")}</select></label></div>
+    <label>सामान<textarea id="f_items" style="min-height:60px">${esc(p.items)}</textarea></label>
+    <div class="row"><button class="btn primary" type="submit" id="psave">सेव करें</button>${id?`<button class="btn ghost danger" type="button" id="pdel2">${confirmPurDel===id?"पक्का हटाएं?":"हटाएं"}</button>`:""}</div>
+  </form></div>`;
+  const close=()=>{ root.innerHTML=""; confirmPurDel=null; };
+  $("#px2").onclick=close;
+  const setv=(sel,v)=>{ if(v!=null&&v!=="") $(sel).value=v; };
+  $("#purf").onsubmit=async e=>{ e.preventDefault(); const btn=$("#psave"); btn.disabled=true; btn.textContent="सेव हो रहा है…";
+    let fileId=p.fileId||"", fileName=p.fileName||"";
+    if(false){ try{ }catch(_){ toast("बिल की फ़ाइल सेव नहीं हुई, बाकी जानकारी सेव हो रही है"); } }
+    const num=sel=>r2(+$(sel).value||0);
+    await save("purchases",id||uid(),{supplier:$("#f_sup").value.trim(),supplierGstin:$("#f_sg").value.trim().toUpperCase(),invoiceNo:$("#f_no").value.trim(),date:$("#f_date").value||today(),
+      taxable:num("#f_tx"),cgst:num("#f_cg"),sgst:num("#f_sgst"),igst:num("#f_ig"),total:num("#f_tot"),mode:$("#f_mode").value,items:$("#f_items").value.trim(),fileId,fileName,createdAt:p.createdAt||Date.now()});
+    ui.purMonth=($("#f_date").value||today()).slice(0,7); close(); toast("ख़रीद बिल सेव हो गया"); };
+  if($("#pdel2")) $("#pdel2").onclick=async()=>{ if(confirmPurDel!==id){ confirmPurDel=id; editPurchase(id); return; } close(); await removeRec("purchases",id); toast("ख़रीद बिल हटा दिया"); };
+}
+
+// ---------- WhatsApp messages ----------
+function viewMsg(v){
+  const withPhone=state.customers.filter(c=>c.phone).map(c=>({...c,st:custStats(c.id)}));
+  const f=ui.msgFilter; const cutoff=ymd(new Date(Date.now()-30*864e5));
+  let list=withPhone.filter(c=> f==="all"||(f==="due"&&c.st.due>0)||(f==="inactive"&&(!c.st.last||c.st.last<cutoff)) );
+  list.sort((a,b)=>a.name.localeCompare(b.name));
+  const chosen=withPhone.filter(c=>ui.msgSel.has(c.id));
+  const personal=c=>ui.msgText.replace(/\{नाम\}/g,c.name).replace(/\{बाकी\}/g,inr(c.st.due));
+  v.innerHTML=`<h2>व्हाट्सएप मैसेज</h2>
+  <section class="card">
+    <h3>1. मैसेज लिखें</h3>
+    <div class="segs">${[["offer","नया ऑफर"],["due","बकाया याद"],["festival","त्योहार बधाई"],["stock","नया स्टॉक"]].map(([k,l])=>`<button class="btn small" data-tpl="${k}">${l}</button>`).join("")}</div>
+    <label>मैसेज<textarea id="mt">${esc(ui.msgText)}</textarea></label>
+    <p class="muted" style="margin:0;font-size:.85rem">{नाम} की जगह हर ग्राहक का नाम और {बाकी} की जगह उसका बकाया अपने आप लग जाएगा।</p>
+  </section>
+  <section class="card">
+    <h3>2. ग्राहक चुनें</h3>
+    <div class="segs">${[["all","सभी"],["due","जिनका बकाया है"],["inactive","30 दिन से नहीं आए"]].map(([k,l])=>`<button class="btn small" data-flt="${k}" aria-pressed="${f===k}">${l}</button>`).join("")}</div>
+    ${list.length?`<label class="check"><input type="checkbox" id="selAll" ${list.every(c=>ui.msgSel.has(c.id))?"checked":""}> सभी चुनें (${list.length})</label>
+    <div class="list">${list.map(c=>`<label class="check li"><input type="checkbox" data-sel="${esc(c.id)}" ${ui.msgSel.has(c.id)?"checked":""}><span class="main"><b>${esc(c.name)}</b><span class="muted" style="font-size:.85rem">${esc(c.phone)}${c.st.due>0?" · बाकी "+inr(c.st.due):""}</span></span></label>`).join("")}</div>`
+    :`<div class="empty">${withPhone.length?"इस फ़िल्टर में कोई ग्राहक नहीं":"जिन ग्राहकों का नंबर सेव है, वो यहाँ दिखेंगे।"}</div>`}
+  </section>
+  <section class="card">
+    <h3>3. भेजें <span class="muted" style="font-weight:500;font-size:.9rem">(${chosen.length} चुने · ${chosen.filter(c=>ui.sent.has(c.id)).length} भेजे)</span></h3>
+    <p class="notice" style="margin:0">हर ग्राहक के आगे “भेजें” दबाएं। व्हाट्सएप में मैसेज तैयार खुलेगा, वहाँ Send दबाएं और वापस आकर अगले को भेजें।</p>
+    <div class="list">${chosen.length?chosen.map(c=>`<div class="li"><div class="main"><b>${esc(c.name)}</b><span class="muted" style="font-size:.85rem">${esc(personal(c).slice(0,70))}${personal(c).length>70?"…":""}</span></div>
+      <a class="btn small ${ui.sent.has(c.id)?"":"wa"}" target="_blank" rel="noopener" data-send="${esc(c.id)}" href="${esc(waLink(c.phone,personal(c)))}">${ui.sent.has(c.id)?"✓ फिर भेजें":"भेजें"}</a></div>`).join(""):`<div class="empty">ऊपर से ग्राहक चुनें</div>`}</div>
+  </section>`;
+  const T={offer:"नमस्ते {नाम} जी,\nDivine Elite Oil में इस हफ़्ते खास ऑफर! शुद्ध तेल पर विशेष छूट। ऑर्डर के लिए इसी नंबर पर मैसेज करें। 🙏",
+    due:"नमस्ते {नाम} जी,\nDivine Elite Oil का आपका {बाकी} बकाया है। कृपया सुविधा अनुसार भुगतान कर दें। धन्यवाद 🙏",
+    festival:"{नाम} जी,\nआपको और आपके परिवार को Divine Elite Oil की तरफ़ से त्योहार की हार्दिक शुभकामनाएं! 🪔",
+    stock:"नमस्ते {नाम} जी,\nDivine Elite Oil में नया स्टॉक आ गया है। आज ही ऑर्डर करें। 🙏"};
+  v.querySelectorAll("[data-tpl]").forEach(b=>b.onclick=()=>{ ui.msgText=T[b.dataset.tpl].replace(/Divine Elite Oil/g,S().name); if(b.dataset.tpl==="due"){ ui.msgFilter="due"; } render(); });
+  $("#mt").oninput=e=>{ ui.msgText=e.target.value; clearTimeout(totT); totT=setTimeout(render,700); };
+  v.querySelectorAll("[data-flt]").forEach(b=>b.onclick=()=>{ ui.msgFilter=b.dataset.flt; render(); });
+  if($("#selAll")) $("#selAll").onchange=e=>{ list.forEach(c=>e.target.checked?ui.msgSel.add(c.id):ui.msgSel.delete(c.id)); render(); };
+  v.querySelectorAll("[data-sel]").forEach(b=>b.onchange=()=>{ b.checked?ui.msgSel.add(b.dataset.sel):ui.msgSel.delete(b.dataset.sel); render(); });
+  v.querySelectorAll("[data-send]").forEach(a=>a.addEventListener("click",()=>{ ui.sent.add(a.dataset.send); setTimeout(render,300); }));
+}
+
+// ---------- Settings & products ----------
+let confirmPDel=null, confirmStaffDel=null;
+function viewSettings(v){
+  const s=S();
+  v.innerHTML=`<h2>सेटिंग</h2>
+  <form class="card" id="sf">
+    <h3>दुकान की जानकारी (बिल पर छपेगी)</h3>
+    <div class="row"><label>दुकान का नाम<input id="s_name" value="${esc(s.name)}"></label><label>फ़ोन<input id="s_phone" inputmode="tel" value="${esc(s.phone)}"></label></div>
+    <label>पता<input id="s_addr" value="${esc(s.address)}"></label>
+    <div class="row"><label>बिल नंबर की शुरुआत<input id="s_prefix" value="${esc(s.prefix)}"></label><label>बिल के नीचे लाइन<input id="s_footer" value="${esc(s.footer)}"></label></div>
+    <label class="check"><input type="checkbox" id="s_gst" ${s.gstOn?"checked":""}> GST बिल बनाना है</label>
+    <div class="row" ${s.gstOn?"":"hidden"} id="gstrow"><label>GSTIN<input id="s_gstin" value="${esc(s.gstin)}" placeholder="जैसे: 06ABCDE1234F1Z5"></label>
+      <label>रेट में GST<select id="s_incl"><option value="1" ${s.gstIncl?"selected":""}>शामिल है (MRP वाला रेट)</option><option value="0" ${s.gstIncl?"":"selected"}>ऊपर से जुड़ेगा</option></select></label></div>
+    <div><button class="btn primary" type="submit">सेव करें</button></div>
+  </form>
+  <section class="card">
+    <h3>पूरा बैकअप</h3>
+    <p class="muted" style="margin:0;font-size:.9rem">सारे ग्राहक, बिल, खरीद, प्रोडक्ट और सेटिंग एक फ़ाइल में। इसे हर हफ़्ते या महीने डाउनलोड करके Google Drive या ईमेल में रख लें। अभी कुल ${state.customers.length+state.bills.length+state.purchases.length+state.products.length} एंट्री हैं।</p>
+    <div class="row"><button class="btn primary" id="bkDown" type="button">पूरा बैकअप डाउनलोड करें</button>
+      <label class="btn" style="flex-direction:row;color:var(--fg);font-size:1rem">बैकअप से वापस लाएं<input type="file" id="bkUp" accept=".json,application/json" hidden></label></div>
+    <div id="bkMsg" class="notice" hidden></div>
+  </section>
+  <section class="card">
+    <h3>लोग (स्टाफ़ और पार्टनर)</h3>
+    <p class="muted" style="margin:0;font-size:.9rem">हर व्यक्ति अपने मोबाइल नंबर और 6 अंक के PIN से लॉगिन करेगा, अपने फ़ोन पर या दुकान के फ़ोन/PC पर। <b>स्टाफ़</b>: बिल बनाना और भेजना, ग्राहक, मैसेज। <b>पार्टनर</b>: बिल, सेल रिपोर्ट, ग्राहक और खरीद सिर्फ़ देख सकते हैं। <b>एडमिन</b>: सब कुछ।</p>
+    <div class="list">${state.users.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(u=>`<div class="li"><div class="main"><b>${esc(u.name)}</b><span class="muted" style="font-size:.85rem">${esc(u.phone||"")} · ${esc(ROLE_NAME[u.role]||u.role)}</span></div>${u.id===me.uid?`<span class="pill ok">आप</span>`:`<button class="btn small ghost danger" data-rmuser="${esc(u.id)}">${confirmStaffDel===u.id?"पक्का हटाएं?":"हटाएं"}</button>`}</div>`).join("")}</div>
+    <div class="row"><label>नाम<input id="nu_name" placeholder="जैसे: राजू"></label><label>मोबाइल नंबर<input id="nu_ph" inputmode="tel" placeholder="10 अंक"></label></div>
+    <div class="row"><label>PIN (6 अंक)<input id="nu_pin" inputmode="numeric" maxlength="6"></label><label>काम<select id="nu_role"><option value="staff">स्टाफ़</option><option value="partner">पार्टनर</option><option value="admin">एडमिन</option></select></label><button class="btn primary" id="nu_add" type="button" style="flex:0 1 140px">+ जोड़ें</button></div>
+  </section>
+  <section class="card">
+    <div class="row" style="align-items:center"><h3>प्रोडक्ट और रेट</h3><button class="btn" id="addP" style="flex:none">+ प्रोडक्ट</button></div>
+    <p class="muted" style="margin:0;font-size:.85rem">यहाँ रेट सेव करेंगे तो बिल बनाते समय प्रोडक्ट चुनते ही रेट अपने आप भर जाएगा।</p>
+    <div class="tablebox"><table class="num"><thead><tr><th>प्रोडक्ट</th><th>यूनिट</th><th class="r">रेट</th>${s.gstOn?`<th>HSN</th><th class="r">GST%</th>`:""}<th></th></tr></thead><tbody>
+    ${state.products.length?state.products.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.unit)}</td><td class="r">${inr(p.rate)}</td>${s.gstOn?`<td>${esc(p.hsn||"–")}</td><td class="r">${esc(p.gst)}%</td>`:""}<td class="r"><button class="btn small ghost" data-pedit="${esc(p.id)}">बदलें</button></td></tr>`).join(""):`<tr><td colspan="5" class="empty">अभी कोई प्रोडक्ट नहीं</td></tr>`}
+    </tbody></table></div>
+  </section>
+  <p class="muted" style="font-size:.85rem" hidden>${state.mode==="db"?"आपका डेटा ऑनलाइन सेव होता है, फ़ोन और कंप्यूटर दोनों पर यही दिखेगा।":"अभी डेटा सिर्फ़ इसी डिवाइस में सेव हो रहा है। claude.ai में साइन इन करके खोलें तो ऑनलाइन सेव होगा।"}</p>`;
+  $("#s_gst").onchange=e=>{ $("#gstrow").hidden=!e.target.checked; };
+  $("#sf").onsubmit=async e=>{ e.preventDefault(); await save("settings",null,{name:$("#s_name").value.trim()||"Divine Elite Oil",phone:$("#s_phone").value.trim(),address:$("#s_addr").value.trim(),prefix:$("#s_prefix").value.trim()||"DEO-",footer:$("#s_footer").value.trim(),gstOn:$("#s_gst").checked,gstin:$("#s_gstin").value.trim(),gstIncl:$("#s_incl").value==="1"}); toast("सेटिंग सेव हो गई"); };
+  $("#addP").onclick=()=>editProduct(null);
+  $("#bkDown").onclick=async()=>{
+    const data={app:"divine-elite-oil-billing",version:1,exportedAt:new Date().toISOString(),settings:state.settings,customers:state.customers,products:state.products,bills:state.bills,purchases:state.purchases};
+    try{ await saveFile("DivineEliteOil_Backup_"+today()+".json",new Blob([JSON.stringify(data,null,1)],{type:"application/json"})); toast("बैकअप तैयार है"); }
+    catch(e){ toast("बैकअप सेव नहीं हुआ"); } };
+  $("#bkUp").onchange=async e=>{ const f=e.target.files[0]; if(!f) return; const m=$("#bkMsg"); m.hidden=false;
+    let d; try{ d=JSON.parse(await f.text()); }catch(_){ m.textContent="यह बैकअप फ़ाइल सही नहीं है।"; return; }
+    if(!d||d.app!=="divine-elite-oil-billing"){ m.textContent="यह इस ऐप की बैकअप फ़ाइल नहीं है।"; return; }
+    const cols=["customers","products","bills","purchases"]; const missing=cols.reduce((a,c)=>a+(d[c]||[]).filter(x=>x&&x.id&&!state[c].some(y=>y.id===x.id)).length,0);
+    m.innerHTML=`इस फ़ाइल (${esc(String(d.exportedAt||"").slice(0,10))}) में ${missing} एंट्री ऐसी हैं जो अभी ऐप में नहीं हैं। मौजूदा डेटा नहीं बदलेगा, सिर्फ़ ग़ायब एंट्री वापस जुड़ेंगी। <button class="btn small primary" id="bkGo" type="button">${missing} एंट्री वापस लाएं</button>`;
+    $("#bkGo").onclick=async()=>{ m.textContent="वापस ला रहे हैं…"; let n=0;
+      for(const c of cols) for(const x of (d[c]||[])){ if(x&&x.id&&!state[c].some(y=>y.id===x.id)){ const {id,...rest}=x; await save(c,id,rest); n++; } }
+      toast(n+" एंट्री वापस आ गईं"); }; };
+  $("#nu_add").onclick=async()=>{ const name=$("#nu_name").value.trim(), ph=$("#nu_ph").value.replace(/\D/g,"").slice(-10), pin=$("#nu_pin").value.trim(), role=$("#nu_role").value;
+    if(!name){ toast("नाम डालें"); return; } if(ph.length!==10){ toast("10 अंक का मोबाइल नंबर डालें"); return; } if(!/^\d{6}$/.test(pin)){ toast("PIN 6 अंक का होना चाहिए"); return; }
+    const btn=$("#nu_add"); btn.disabled=true; btn.textContent="जोड़ रहे हैं…";
+    try{ const nuid=await FBX.createUserOther(phoneEmail(ph),pin); await FBX.set("users/"+nuid,{name,phone:ph,role,createdAt:Date.now()}); toast(name+" जोड़ दिया गया"); }
+    catch(x){ toast(x&&x.code==="auth/email-already-in-use"?"यह नंबर पहले से है। उसका पुराना PIN डालें या दूसरा नंबर लें":"नहीं जुड़ा: "+(x&&x.code||x)); btn.disabled=false; btn.textContent="+ जोड़ें"; } };
+  v.querySelectorAll("[data-rmuser]").forEach(b=>b.onclick=async()=>{ const id=b.dataset.rmuser; if(confirmStaffDel!==id){ confirmStaffDel=id; render(); return; } confirmStaffDel=null;
+    try{ await FBX.del("users/"+id); toast("हटा दिया, अब वो लॉगिन नहीं कर पाएंगे"); }catch(_){ toast("हटाया नहीं जा सका"); } });
+}
+function editProduct(id){
+  const p=id?state.products.find(x=>x.id===id):{name:"",unit:"लीटर",rate:"",gst:5};
+  const root=$("#modalRoot");
+  root.innerHTML=`<div class="modal" id="mbg"><form class="card" id="pf">
+    <h3>${id?"प्रोडक्ट बदलें":"नया प्रोडक्ट"}</h3>
+    <label>नाम<input id="p_name" required value="${esc(p.name)}" placeholder="जैसे: सरसों तेल 15 लीटर टिन"></label>
+    <div class="row"><label>यूनिट<select id="p_unit">${["लीटर","किलो","टिन","बोतल","पैकेट","पीस"].map(u=>`<option ${u===p.unit?"selected":""}>${u}</option>`).join("")}</select></label>
+    <label>रेट (₹)<input type="number" step="any" min="0" id="p_rate" required value="${esc(p.rate)}"></label>
+    <label>GST %<select id="p_gst">${[0,5,12,18].map(g=>`<option ${+g===+p.gst?"selected":""}>${g}</option>`).join("")}</select></label>
+    <label>HSN कोड<input id="p_hsn" inputmode="numeric" value="${esc(p.hsn||"")}" placeholder="जैसे: 1514"></label></div>
+    <div class="row"><button class="btn primary" type="submit">सेव करें</button><button class="btn ghost" type="button" id="px">रद्द करें</button>
+    ${id?`<button class="btn ghost danger" type="button" id="pdel">${confirmPDel===id?"पक्का हटाएं?":"हटाएं"}</button>`:""}</div>
+  </form></div>`;
+  const close=()=>{ root.innerHTML=""; confirmPDel=null; };
+  $("#px").onclick=close; $("#mbg").onclick=e=>{ if(e.target.id==="mbg") close(); };
+  $("#pf").onsubmit=async e=>{ e.preventDefault(); await save("products",id||uid(),{name:$("#p_name").value.trim(),unit:$("#p_unit").value,rate:+$("#p_rate").value||0,gst:+$("#p_gst").value,hsn:$("#p_hsn").value.trim()}); close(); toast("प्रोडक्ट सेव हो गया"); };
+  if($("#pdel")) $("#pdel").onclick=async()=>{ if(confirmPDel!==id){ confirmPDel=id; editProduct(id); return; } close(); await removeRec("products",id); };
+}
+
+render();
+connect();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "appId": "com.divineeliteoil.billing",
+  "appName": "Divine Billing",
+  "webDir": "www",
+  "server": {
+    "url": "https://1981varunverma-hue.github.io/Divine-elite-oil/",
+    "androidScheme": "https"
+  },
+  "android": { "allowMixedContent": false }
+}
