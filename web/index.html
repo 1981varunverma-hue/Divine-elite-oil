@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Divine Elite Oil बिलिंग</title>
+<title>Divine Elite Oil Billing</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1d5e2c">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Divine Billing">
@@ -39,7 +39,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:980px;margin:0 auto}
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
 header.top .wrap{display:flex;align-items:center;gap:12px;padding-block:10px}
-.logo{width:36px;height:36px;border-radius:50% 50% 50% 8px;background:var(--accent);transform:rotate(-45deg);flex:none}
+.logo{height:42px;width:auto;flex:none;background:#fff;border-radius:8px;padding:3px 6px}
+.login-logo{display:block;width:min(260px,80%);height:auto;margin:4px auto 8px}
 .brand{font-family:var(--display);font-weight:700;font-size:1.25rem;line-height:1.1}
 .brand small{display:block;font-family:var(--body);font-weight:500;font-size:.8rem;color:var(--muted)}
 .sync{margin-left:auto;font-size:.8rem;color:var(--muted);text-align:right}
@@ -122,8 +123,8 @@ td.r,th.r{text-align:right}
 <body>
 <header class="top">
   <div class="wrap">
-    <div class="logo" aria-hidden="true"></div>
-    <div class="brand"><span id="shopName">Divine Elite Oil</span><small>बिलिंग · ग्राहक · व्हाट्सएप</small></div>
+    <img class="logo" src="logo.png" alt="Divine Elite Oil">
+    <div class="brand"><span id="shopName" hidden>Divine Elite Oil</span><small>बिलिंग · ग्राहक · व्हाट्सएप</small></div>
     <div class="sync" id="sync">लोड हो रहा है…</div>
   </div>
   <div class="desk-tabs"><div class="wrap"><nav class="tabs" id="tabs"></nav></div></div>
@@ -295,6 +296,7 @@ function render(){
 // ---------- Login (shared device) ----------
 function viewLogin(v){
   v.innerHTML=`<form class="card" id="lockf" style="max-width:420px;margin:24px auto;width:100%">
+    <img class="login-logo" src="logo.png" alt="Divine Elite Oil">
     <h2>लॉगिन करें</h2>
     <label>मोबाइल नंबर<input id="lk_ph" inputmode="tel" autocomplete="username" placeholder="10 अंक"></label>
     <label>PIN (6 अंक)<input id="lk_pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="6"></label>
@@ -312,6 +314,7 @@ function viewLogin(v){
 const SEED_PRODUCTS=[["black-mustard","काली सरसों का तेल",320,"1514"],["yellow-mustard","पीली सरसों का तेल",350,"1514"],["coconut","नारियल का तेल",800,"1513"],["groundnut","मूंगफली का तेल",415,"1508"],["flaxseed","अलसी का तेल",2100,"1515"],["sesame","तिल का तेल",600,"1515"]];
 function viewSetup(v){
   v.innerHTML=`<form class="card" id="setf" style="max-width:460px;margin:24px auto;width:100%">
+    <img class="login-logo" src="logo.png" alt="Divine Elite Oil">
     <h2>पहली बार सेटअप</h2>
     <p class="muted" style="margin:0">यह सिर्फ़ एक बार होगा। आप इस ऐप के मालिक (एडमिन) बनेंगे। बाद में सेटिंग से स्टाफ़ और पार्टनर जोड़ सकते हैं।</p>
     <label>आपका नाम<input id="su_name" required></label>
@@ -488,6 +491,7 @@ async function saveFile(name,blob,{share=false,text=""}={}){
 }
 
 // ---------- PDF invoice ----------
+const LOGO_URL=new URL("logo.png",location.href).href;
 function invoiceHtml(b){
   const s=S(); const gst=!!b.gstOn; const c=calcBill(b.items||[],b.discount,gst,s.gstIncl);
   const due=billDue(b);
@@ -497,10 +501,12 @@ function invoiceHtml(b){
   const money=n=>(Math.round(n*100)/100).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
   // tax summary by rate
   const byRate={}; (b.items||[]).forEach((it,i)=>{ const l=c.lines[i]; if(!l||!l.g) return; byRate[l.g]=byRate[l.g]||{base:0,tax:0}; byRate[l.g].base+=l.base; byRate[l.g].tax+=l.tax; });
-  return `<div style="width:794px;padding:36px 40px;background:#fff;color:#111;font-family:Mukta,'Noto Sans Devanagari',Arial,sans-serif;line-height:1.35">
+  return `<div style="position:relative;width:794px;padding:36px 40px;background:#fff;color:#111;font-family:Mukta,'Noto Sans Devanagari',Arial,sans-serif;line-height:1.35">
+  <img src="${LOGO_URL}" alt="" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:560px;height:auto;opacity:.08;pointer-events:none">
+  <div style="position:relative">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1d5e2c;padding-bottom:12px">
-    <div><div style="font-family:'Baloo 2',Mukta,sans-serif;font-size:30px;font-weight:700;color:#1d5e2c;line-height:1">${esc(s.name)}</div>
-      <div style="font-size:12px;color:#7a5a0c;letter-spacing:.06em;margin-top:4px">शुद्ध · प्राकृतिक · बिना रिफाइन · कोल्ड प्रेस</div>
+    <div><img src="${LOGO_URL}" alt="${esc(s.name)}" style="height:78px;width:auto;display:block">
+      <div style="font-size:12px;color:#7a5a0c;letter-spacing:.06em;margin-top:6px">शुद्ध · प्राकृतिक · बिना रिफाइन · कोल्ड प्रेस</div>
       <div style="font-size:13px;margin-top:6px;max-width:420px">${esc(s.address)}</div>
       <div style="font-size:13px">फ़ोन / WhatsApp: ${esc(s.phone)}</div>
       ${gst&&s.gstin?`<div style="font-size:13px;font-weight:700">GSTIN: ${esc(s.gstin)}</div>`:""}</div>
@@ -536,7 +542,7 @@ function invoiceHtml(b){
   <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:40px;font-size:12px;color:#444">
     <div>${esc(s.footer)}<br>This is a computer generated invoice.</div>
     <div style="text-align:center"><div style="height:40px"></div><div style="border-top:1px solid #333;padding-top:4px;min-width:200px">For ${esc(s.name)}<br>Authorised Signatory</div></div>
-  </div></div>`;
+  </div></div></div>`;
 }
 async function downloadPdf(b,btn){
   if(!window.html2canvas||!window.jspdf){ toast("PDF बनाने वाला हिस्सा लोड नहीं हुआ, पेज दोबारा खोलें"); return; }
@@ -544,6 +550,7 @@ async function downloadPdf(b,btn){
   const host=document.createElement("div"); host.style.cssText="position:fixed;left:-10000px;top:0;z-index:-1"; host.innerHTML=invoiceHtml(b); document.body.appendChild(host);
   try{
     try{ await document.fonts.ready; }catch(_){}
+    await Promise.all([...host.querySelectorAll("img")].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r;})));
     const canvas=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false});
     const pdf=new window.jspdf.jsPDF({unit:"mm",format:"a4",compress:true});
     const pw=210, ph=297, ih=canvas.height*pw/canvas.width; const img=canvas.toDataURL("image/jpeg",0.92);

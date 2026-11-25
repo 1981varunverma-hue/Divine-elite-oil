@@ -1,6 +1,6 @@
 {
-  "name": "Divine Elite Oil बिलिंग",
-  "short_name": "Divine Billing",
+  "name": "Divine Elite Oil Billing",
+  "short_name": "Divine Elite Oil Billing",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
