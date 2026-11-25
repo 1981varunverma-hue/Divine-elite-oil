@@ -249,6 +249,7 @@ function billText(b){
   L.push("जमा: "+inr(b.paid||0)+" ("+(b.mode||"नकद")+")");
   const due=billDue(b); if(due>0) L.push("*बाकी: "+inr(due)+"*");
   L.push(""); L.push(s.footer);
+  L.push(""); L.push("👉 हमसे जुड़ें (Instagram, Facebook, WhatsApp ग्रुप):"); L.push(LINKS_URL);
   return L.join("\n");
 }
 
@@ -492,6 +493,8 @@ async function saveFile(name,blob,{share=false,text=""}={}){
 
 // ---------- PDF invoice ----------
 const LOGO_URL=new URL("logo.png",location.href).href;
+const QR_URL=new URL("qr-links.png",location.href).href;
+const LINKS_URL="https://1981varunverma-hue.github.io/Divine-elite-oil/links.html";
 function invoiceHtml(b){
   const s=S(); const gst=!!b.gstOn; const c=calcBill(b.items||[],b.discount,gst,s.gstIncl);
   const due=billDue(b);
@@ -539,7 +542,14 @@ function invoiceHtml(b){
       ${due>0?`<tr><td style="padding:4px 8px;color:#b3261e;font-weight:700">Balance Due</td><td style="padding:4px 8px;text-align:right;color:#b3261e;font-weight:700">${money(due)}</td></tr>`:""}
     </table>
   </div>
-  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:40px;font-size:12px;color:#444">
+  <div style="display:flex;align-items:center;gap:14px;margin-top:22px;padding:10px 12px;border:1px solid #d9c27a;border-radius:10px;background:#fbf6e6">
+    <img src="${QR_URL}" alt="" style="width:92px;height:92px;flex:none">
+    <div style="font-size:13px;line-height:1.5"><div style="font-weight:700;color:#1d5e2c;font-size:15px">हमसे जुड़ें · QR स्कैन करें</div>
+      <div>📷 Instagram: <b>@divineeliteoil</b> &nbsp; · &nbsp; 👍 Facebook: <b>Divine Elite Oil</b></div>
+      <div>👥 WhatsApp ग्रुप: ऑफ़र और नए स्टॉक की खबर सबसे पहले</div>
+      <div>📞 ऑर्डर: <b>+91 89291 21378</b></div></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:28px;font-size:12px;color:#444">
     <div>${esc(s.footer)}<br>This is a computer generated invoice.</div>
     <div style="text-align:center"><div style="height:40px"></div><div style="border-top:1px solid #333;padding-top:4px;min-width:200px">For ${esc(s.name)}<br>Authorised Signatory</div></div>
   </div></div></div>`;
@@ -557,7 +567,7 @@ async function downloadPdf(b,btn){
     let y=0; pdf.addImage(img,"JPEG",0,0,pw,ih); while(ih+y>ph+1){ y-=ph; pdf.addPage(); pdf.addImage(img,"JPEG",0,y,pw,ih); }
     const blob=pdf.output("blob"); const fname=(b.no+"_"+(b.customerName||"bill")).replace(/[^\w\u0900-\u097F-]+/g,"_")+".pdf";
     host.remove(); btn.disabled=false; btn.textContent="📤 PDF भेजें (WhatsApp)";
-    btn.onclick=async()=>{ const r=await saveFile(fname,blob,{share:true,text:"आपका बिल "+b.no+" · "+inr(b.total)+" · "+S().name}); if(r==="downloaded") toast("PDF डाउनलोड हो गया, अब WhatsApp में 📎 से भेजें"); };
+    btn.onclick=async()=>{ const r=await saveFile(fname,blob,{share:true,text:"आपका बिल "+b.no+" · "+inr(b.total)+" · "+S().name+"\n👉 हमसे जुड़ें: "+LINKS_URL}); if(r==="downloaded") toast("PDF डाउनलोड हो गया, अब WhatsApp में 📎 से भेजें"); };
     toast("PDF तैयार है, अब “PDF भेजें” दबाएं");
   }catch(e){ host.remove(); btn.disabled=false; btn.textContent=old; toast("PDF नहीं बन पाया"); }
 }
