@@ -40,6 +40,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
 header.top .wrap{display:flex;align-items:center;gap:12px;padding-block:10px}
 .logo{height:42px;width:auto;flex:none;background:#fff;border-radius:8px;padding:3px 6px}
+.chip{padding:4px 10px;border-radius:99px;border:1px solid var(--line);background:var(--surface);font:inherit;font-size:.85rem;cursor:pointer;color:var(--fg)}
+.qchips{display:flex;flex-wrap:wrap;gap:6px}
 .mthumbs{display:flex;flex-wrap:wrap;gap:6px}.mthumb{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;font-size:1.6rem;background:var(--surface);text-align:center;line-height:1}.mthumb small{display:block;font-size:.55rem}
 .login-logo{display:block;width:min(260px,80%);height:auto;margin:4px auto 8px}
 .brand{font-family:var(--display);font-weight:700;font-size:1.25rem;line-height:1.1}
@@ -86,7 +88,8 @@ table{width:100%;border-collapse:collapse;font-size:.95rem}
 th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
 th{font-size:.78rem;color:var(--muted);font-weight:600;letter-spacing:.02em}
 td.r,th.r{text-align:right}
-.items .line{display:grid;grid-template-columns:2fr 80px 100px 100px 36px;gap:8px;align-items:end}
+.items .line{display:grid;grid-template-columns:2fr 80px 90px 100px 110px 36px;gap:8px;align-items:end;padding-bottom:10px;border-bottom:1px dashed var(--line)}
+.items .line .qchips{grid-column:1/-1}
 @media (max-width:600px){.items .line{grid-template-columns:1fr 1fr 1fr;}.items .line .pname{grid-column:1/-1}.items .line .lamt{grid-column:1/3}}
 .lamt{font-weight:600;padding:9px 0;text-align:right}
 .totals{display:grid;grid-template-columns:1fr auto;gap:4px 16px;font-size:1rem}
@@ -210,13 +213,22 @@ window.addEventListener("online",()=>render()); window.addEventListener("offline
 
 // ---------- calculations ----------
 const S = () => ({ name:"Divine Elite Oil", address:"", phone:"", gstin:"", gstOn:false, gstIncl:true, prefix:"DEO-", footer:"धन्यवाद! फिर पधारें 🙏", adminPin:"", staff:[], ...state.settings });
+// Oil is priced per litre. A line can be in लीटर, ml, kg or ग्राम; kg converts with the oil's weight (kg per litre).
+const OIL_UNITS=["लीटर","ml","kg","ग्राम"];
+const KGPL_DEFAULT={"black-mustard":0.91,"yellow-mustard":0.91,"coconut":0.92,"groundnut":0.91,"flaxseed":0.93,"sesame":0.92};
+const isOilUnit=u=>OIL_UNITS.includes(u);
+const kgpl=it=>(+it.kgPerL>0?+it.kgPerL:0.91);
+function toLitres(it){ const q=+it.qty||0; switch(it.unit){ case "ml": return q/1000; case "kg": return q/kgpl(it); case "ग्राम": return q/1000/kgpl(it); default: return q; } }
+const lineAmt=it=>r2(toLitres(it)*(+it.rate||0));
+const fmtQty=it=>{ const q=+it.qty||0; return (Math.round(q*1000)/1000).toLocaleString("en-IN")+" "+(it.unit||""); };
+const prodKgpl=p=>p?(+p.kgPerL>0?+p.kgPerL:(KGPL_DEFAULT[p.id]||0.91)):0.91;
 function calcBill(items, discount, gstOn, gstIncl){
   // discount is spread over the lines before tax, so taxable value is after discount
-  const gross=items.reduce((a,it)=>a+r2((+it.qty||0)*(+it.rate||0)),0);
+  const gross=items.reduce((a,it)=>a+lineAmt(it),0);
   const f=gross>0?Math.max(0,(gross-(+discount||0))/gross):1;
   let sub=0, tax=0;
   const lines=items.map(it=>{
-    const net=r2((+it.qty||0)*(+it.rate||0))*f; const g=gstOn?(+it.gst||0):0; let base=net, t=0;
+    const net=lineAmt(it)*f; const g=gstOn?(+it.gst||0):0; let base=net, t=0;
     if(g){ if(gstIncl){ base=net/(1+g/100); t=net-base; } else { t=net*g/100; } }
     sub+=base; tax+=t; return {base,tax:t,g};
   });
@@ -242,7 +254,7 @@ function billText(b){
   L.push("*"+s.name+"*"); L.push("शुद्ध · प्राकृतिक · बिना रिफाइन · कोल्ड प्रेस"); if(s.address) L.push(s.address); if(s.phone) L.push("फ़ोन: "+s.phone); if(b.gstOn&&s.gstin) L.push("GSTIN: "+s.gstin);
   L.push(""); L.push("बिल नं: "+b.no+"   तारीख: "+showDate(b.date)); L.push("ग्राहक: "+(b.customerName||"नकद ग्राहक")); if(b.gstOn&&b.customerGstin) L.push("ग्राहक GSTIN: "+b.customerGstin);
   L.push("------------------------------");
-  (b.items||[]).forEach(it=>L.push(it.name+(b.gstOn&&it.hsn?" (HSN "+it.hsn+", GST "+it.gst+"%)":"")+"  "+it.qty+" "+(it.unit||"")+" × "+inr(it.rate)+" = "+inr(r2(it.qty*it.rate))));
+  (b.items||[]).forEach(it=>L.push(it.name+(b.gstOn&&it.hsn?" (HSN "+it.hsn+", GST "+it.gst+"%)":"")+"  "+fmtQty(it)+(it.unit==="kg"||it.unit==="ग्राम"?" (≈"+(Math.round(toLitres(it)*1000)/1000)+" लीटर)":"")+" × "+inr(it.rate)+(isOilUnit(it.unit)?"/लीटर":"")+" = "+inr(lineAmt(it))));
   L.push("------------------------------");
   if(b.discount) L.push("छूट: -"+inr(b.discount));
   if(b.gstOn&&b.tax){ const cg=r2(b.tax/2); L.push("टैक्स योग्य राशि: "+inr(b.sub)); L.push("CGST: "+inr(cg)+"  SGST: "+inr(r2(b.tax-cg))); if(s.gstIncl) L.push("(रेट में GST शामिल है)"); }
@@ -335,7 +347,7 @@ function viewSetup(v){
       await FBX.set("meta/owner",{uid:uidNew,createdAt:Date.now()});
       await FBX.set("users/"+uidNew,{name,phone:ph,role:"admin",createdAt:Date.now()});
       await FBX.set("settings/shop",{name:"Divine Elite Oil",prefix:"DEO-",phone:"+91 8929121378",address:"Shop No. 2122, New Colony Mod, Gurugram (Opposite Pappu Fish Corner)",footer:"धन्यवाद! फिर पधारें 🙏",gstOn:true,gstIncl:true,gstin:"06AYIPV1022D1ZR"});
-      for(const [id,n,rate,hsn] of SEED_PRODUCTS) await FBX.set("products/"+id,{name:n,unit:"लीटर",rate,gst:5,hsn});
+      for(const [id,n,rate,hsn] of SEED_PRODUCTS) await FBX.set("products/"+id,{name:n,unit:"लीटर",rate,gst:5,hsn,kgPerL:KGPL_DEFAULT[id]||0.91});
       try{ localStorage.setItem("divine-last-phone",ph); }catch(_){}
     }catch(x){ $("#su_go").disabled=false; $("#su_go").textContent="सेटअप पूरा करें"; bad("सेटअप नहीं हुआ: "+(x&&x.code||x)); }
   };
@@ -368,11 +380,13 @@ function viewBill(v){
     ${draft.items.map((it,i)=>`<div class="line">
       <label class="pname">प्रोडक्ट<input list="prodlist" id="i_name_${i}" data-i="${i}" data-f="name" value="${esc(it.name)}" placeholder="जैसे: सरसों तेल 1 लीटर"></label>
       <label>मात्रा<input type="number" step="any" min="0" inputmode="decimal" id="i_qty_${i}" data-i="${i}" data-f="qty" value="${esc(it.qty)}"></label>
-      <label>रेट (₹)<input type="number" step="any" min="0" inputmode="decimal" id="i_rate_${i}" data-i="${i}" data-f="rate" value="${esc(it.rate)}"></label>
-      <div class="lamt num" id="lamt_${i}">${inr(r2(it.qty*it.rate))}</div>
+      ${isOilUnit(it.unit)?`<label>यूनिट<select id="i_unit_${i}" data-unit="${i}">${OIL_UNITS.map(u=>`<option ${u===it.unit?"selected":""}>${u}</option>`).join("")}</select></label>`:`<label>यूनिट<input value="${esc(it.unit||"")}" disabled></label>`}
+      <label>रेट (₹${isOilUnit(it.unit)?"/लीटर":""})<input type="number" step="any" min="0" inputmode="decimal" id="i_rate_${i}" data-i="${i}" data-f="rate" value="${esc(it.rate)}"></label>
+      <div class="lamt num" id="lamt_${i}">${inr(lineAmt(it))}<small class="muted" id="lconv_${i}" style="display:block;font-size:.72rem;font-weight:500">${convHint(it)}</small></div>
+      <div class="qchips" style="flex-basis:100%">${isOilUnit(it.unit)?QUICK.map(([q,u])=>`<button type="button" class="chip" data-q="${i}" data-qq="${q}" data-qu="${u}">${q} ${u}</button>`).join(""):""}</div>
       <button class="btn ghost small danger" data-del="${i}" aria-label="लाइन हटाएं" ${draft.items.length<2?"disabled":""}>✕</button>
     </div>`).join("")}
-    <div><button class="btn" id="addLine">+ और सामान जोड़ें</button></div>
+    <div class="row"><button class="btn" id="addLine">+ और सामान जोड़ें</button><button class="btn wa" id="scanBtn" type="button">📷 स्टिकर स्कैन करें</button></div>
   </section>
   <section class="card">
     <div class="row">
@@ -394,13 +408,16 @@ function viewBill(v){
   v.querySelectorAll("[data-f]").forEach(inp=>{
     inp.addEventListener(inp.dataset.f==="name"?"change":"input",e=>{
       const it=draft.items[+inp.dataset.i]; const f=inp.dataset.f;
-      if(f==="name"){ it.name=e.target.value; const p=state.products.find(p=>p.name===it.name); if(p){ it.rate=+p.rate||0; it.unit=p.unit||it.unit; it.gst=p.gst!=null?+p.gst:it.gst; it.hsn=p.hsn||""; const ri=$("#i_rate_"+inp.dataset.i); if(ri) ri.value=it.rate; refreshTotals(); } }
+      if(f==="name"){ it.name=e.target.value; const p=state.products.find(p=>p.name===it.name); if(p){ it.rate=+p.rate||0; const pu=p.unit||"लीटर"; it.unit=pu==="लीटर"?(isOilUnit(it.unit)?it.unit:"लीटर"):pu; it.kgPerL=prodKgpl(p); it.pid=p.id; it.gst=p.gst!=null?+p.gst:it.gst; it.hsn=p.hsn||""; render(); } }
       else { it[f]=e.target.value===""?0:+e.target.value; refreshTotals(); }
     });
     if(inp.dataset.f==="name") inp.addEventListener("input",e=>{ draft.items[+inp.dataset.i].name=e.target.value; });
   });
   v.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ draft.items.splice(+b.dataset.del,1); render(); });
-  $("#addLine").onclick=()=>{ draft.items.push({name:"",qty:1,unit:"लीटर",rate:0,gst:5}); render(); const el=$("#i_name_"+(draft.items.length-1)); if(el) el.focus(); };
+  v.querySelectorAll("[data-unit]").forEach(sel=>sel.onchange=e=>{ const it=draft.items[+sel.dataset.unit]; it.unit=e.target.value; refreshTotals(); });
+  v.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.q, it=draft.items[i]; it.qty=+b.dataset.qq; it.unit=b.dataset.qu; const qi=$("#i_qty_"+i); if(qi) qi.value=it.qty; const us=$("#i_unit_"+i); if(us) us.value=it.unit; refreshTotals(); });
+  $("#scanBtn").onclick=()=>openScanner();
+  $("#addLine").onclick=()=>{ draft.items.push({name:"",qty:1,unit:"लीटर",rate:0,gst:5,kgPerL:0.91}); render(); const el=$("#i_name_"+(draft.items.length-1)); if(el) el.focus(); };
   $("#d_disc").oninput=e=>{ draft.discount=+e.target.value||0; refreshTotals(); };
   $("#d_paid").oninput=e=>{ draft.paid=e.target.value; refreshTotals(); };
   $("#d_mode").onchange=e=>{ draft.mode=e.target.value; if(draft.mode==="उधार"){ draft.paid="0"; render(); } };
@@ -409,13 +426,15 @@ function viewBill(v){
   $("#saveBill").onclick=saveBill;
 }
 let totT;
+const QUICK=[[100,"ml"],[200,"ml"],[500,"ml"],[1,"लीटर"],[2,"लीटर"],[5,"लीटर"],[15,"लीटर"],[50,"लीटर"],[1,"kg"],[5,"kg"]];
+function convHint(it){ if(it.unit==="kg"||it.unit==="ग्राम") return "≈ "+(Math.round(toLitres(it)*1000)/1000)+" लीटर (1 लीटर = "+kgpl(it)+" kg)"; if(it.unit==="ml") return "= "+(Math.round(toLitres(it)*1000)/1000)+" लीटर"; return ""; }
 function totalsHtml(){ const s=S(); const c=calcBill(draft.items,draft.discount,s.gstOn,s.gstIncl); const paid=draft.paid===""?c.total:(+draft.paid||0);
   return `${s.gstOn?`<span class="muted">टैक्स योग्य राशि</span><span>${inr(c.sub)}</span><span class="muted">GST (CGST+SGST)</span><span>${inr(c.tax)}</span>`:""}
       ${+draft.discount?`<span class="muted">छूट</span><span>-${inr(draft.discount)}</span>`:""}
       <span class="grand">कुल</span><span class="grand">${inr(c.total)}</span>
       ${c.total-paid>0.001?`<span class="due">बाकी (उधार)</span><span class="due">${inr(c.total-paid)}</span>`:""}`; }
 function refreshTotals(){ const box=$("#totalsBox"); if(!box) return; box.innerHTML=totalsHtml();
-  draft.items.forEach((it,i)=>{ const el=$("#lamt_"+i); if(el) el.textContent=inr(r2(it.qty*it.rate)); });
+  draft.items.forEach((it,i)=>{ const el=$("#lamt_"+i); if(el){ el.firstChild.nodeValue=inr(lineAmt(it)); const h=$("#lconv_"+i); if(h) h.textContent=convHint(it); } });
   const s=S(); const c=calcBill(draft.items,draft.discount,s.gstOn,s.gstIncl); const pi=$("#d_paid"); if(pi) pi.placeholder=c.total+" (पूरा)"; }
 
 async function saveBill(){
@@ -433,7 +452,7 @@ async function saveBill(){
   const paid = draft.paid===""?c.total:r2(+draft.paid||0);
   const editing=!!draft.editId; const id=draft.editId||uid();
   const bill={ no:editing?draft.editNo:nextBillNo(), date:draft.date||today(), customerId:cid||"", customerName:cname||"नकद ग्राहक", customerPhone:cphone||"", customerGstin:(state.customers.find(x=>x.id===cid)||{}).gstin||"",
-    items:items.map(it=>{ const pr=state.products.find(p=>p.name===String(it.name).trim())||{}; return {name:String(it.name).trim(),qty:+it.qty,unit:it.unit||"",rate:+it.rate,gst:pr.gst!=null?+pr.gst:(+it.gst||0),hsn:pr.hsn||it.hsn||""}; }),
+    items:items.map(it=>{ const pr=state.products.find(p=>p.name===String(it.name).trim())||{}; return {name:String(it.name).trim(),qty:+it.qty,unit:it.unit||"",rate:+it.rate,kgPerL:kgpl(it),gst:pr.gst!=null?+pr.gst:(+it.gst||0),hsn:pr.hsn||it.hsn||""}; }),
     discount:+draft.discount||0, sub:c.sub, tax:c.tax, total:c.total, paid, mode:draft.mode, gstOn:!!s.gstOn, createdAt:editing?(draft.editCreatedAt||Date.now()):Date.now(), createdBy:editing?(draft.createdBy||""):meName() };
   if(editing){ bill.editedAt=Date.now(); bill.editedBy=meName(); }
   await save("bills",id,bill);
@@ -573,7 +592,7 @@ function invoiceHtml(b){
     ${gst&&b.customerGstin?`<div>GSTIN: ${esc(b.customerGstin)}</div>`:""}</div>
   <table style="width:100%;border-collapse:collapse">
     <tr><th ${th}>#</th><th ${th}>Item</th>${gst?`<th ${th}>HSN</th>`:""}<th ${th}>Qty</th><th ${th}>Rate${gst&&s.gstIncl?" (incl. GST)":""}</th>${gst?`<th ${th}>Taxable</th><th ${th}>GST</th>`:""}<th ${th}>Amount</th></tr>
-    ${(b.items||[]).map((it,i)=>{ const l=c.lines[i]||{base:0,tax:0,g:0}; return `<tr><td ${td}>${i+1}</td><td ${td}>${esc(it.name)}</td>${gst?`<td ${td}>${esc(it.hsn||"")}</td>`:""}<td ${tdr}>${esc(it.qty)} ${esc(it.unit||"")}</td><td ${tdr}>${money(it.rate)}</td>${gst?`<td ${tdr}>${money(l.base)}</td><td ${tdr}>${esc(l.g)}%</td>`:""}<td ${tdr}>${money(r2(it.qty*it.rate))}</td></tr>`; }).join("")}
+    ${(b.items||[]).map((it,i)=>{ const l=c.lines[i]||{base:0,tax:0,g:0}; return `<tr><td ${td}>${i+1}</td><td ${td}>${esc(it.name)}</td>${gst?`<td ${td}>${esc(it.hsn||"")}</td>`:""}<td ${tdr}>${esc(fmtQty(it))}${it.unit==="kg"||it.unit==="ग्राम"?`<br><span style="font-size:10px;color:#555">≈ ${Math.round(toLitres(it)*1000)/1000} L</span>`:""}</td><td ${tdr}>${money(it.rate)}${isOilUnit(it.unit)?"<span style=\"font-size:10px\">/L</span>":""}</td>${gst?`<td ${tdr}>${money(l.base)}</td><td ${tdr}>${esc(l.g)}%</td>`:""}<td ${tdr}>${money(lineAmt(it))}</td></tr>`; }).join("")}
   </table>
   <div style="display:flex;justify-content:space-between;gap:24px;margin-top:14px">
     <div style="flex:1;font-size:12px">
@@ -665,7 +684,7 @@ function viewReport(v){
   const monRows=MONTHS.map((n,i)=>{ const k=ui.repYear+"-"+pad(i+1); const x=bs.filter(b=>b.date.slice(0,7)===k); return {k,n,c:x.length,amt:x.reduce((a,b)=>a+(b.total||0),0)}; });
   const years=[...new Set([t.slice(0,4),...bs.map(b=>b.date.slice(0,4))])].sort().reverse();
   // top products this month
-  const prod={}; bs.filter(b=>b.date.slice(0,7)===ui.repMonth).forEach(b=>(b.items||[]).forEach(it=>{ const k=it.name; prod[k]=prod[k]||{q:0,amt:0,u:it.unit}; prod[k].q+=+it.qty; prod[k].amt+=it.qty*it.rate; }));
+  const prod={}; bs.filter(b=>b.date.slice(0,7)===ui.repMonth).forEach(b=>(b.items||[]).forEach(it=>{ const k=it.name; prod[k]=prod[k]||{q:0,amt:0,u:isOilUnit(it.unit)?"लीटर":it.unit}; prod[k].q+=isOilUnit(it.unit)?toLitres(it):+it.qty; prod[k].amt+=lineAmt(it); }));
   const prodRows=Object.entries(prod).sort((a,b)=>b[1].amt-a[1].amt).slice(0,8);
   const seenModes=[...new Set([...MODES,...bs.map(b=>b.mode).filter(Boolean)])];
   const modeRows=seenModes.map(m=>{ const pick=f=>m==="उधार"?bs.filter(f).reduce((a,b)=>a+Math.max(0,billDue(b)),0):bs.filter(b=>f(b)&&b.mode===m).reduce((a,b)=>a+(+b.paid||0),0);
@@ -749,7 +768,7 @@ function viewCustomers(v){
 function openCustomer(id){
   const c=state.customers.find(x=>x.id===id); if(!c) return; const st=custStats(id);
   const bs=state.bills.filter(b=>b.customerId===id).sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt-a.createdAt));
-  const prod={}; bs.forEach(b=>(b.items||[]).forEach(it=>{ prod[it.name]=prod[it.name]||{q:0,amt:0,u:it.unit}; prod[it.name].q+=+it.qty; prod[it.name].amt+=it.qty*it.rate; }));
+  const prod={}; bs.forEach(b=>(b.items||[]).forEach(it=>{ prod[it.name]=prod[it.name]||{q:0,amt:0,u:isOilUnit(it.unit)?"लीटर":it.unit}; prod[it.name].q+=isOilUnit(it.unit)?toLitres(it):+it.qty; prod[it.name].amt+=lineAmt(it); }));
   const root=$("#modalRoot");
   root.innerHTML=`<div class="modal" id="mbg"><div class="card" role="dialog" aria-label="ग्राहक का हिसाब">
     <div class="row" style="align-items:center"><h3>${esc(c.name)}</h3><button class="btn ghost small" id="mclose" style="flex:none">बंद करें</button></div>
@@ -965,7 +984,7 @@ function viewSettings(v){
     <div class="row"><label>PIN (6 अंक)<input id="nu_pin" inputmode="numeric" maxlength="6"></label><label>काम<select id="nu_role"><option value="staff">स्टाफ़</option><option value="partner">पार्टनर</option><option value="admin">एडमिन</option></select></label><button class="btn primary" id="nu_add" type="button" style="flex:0 1 140px">+ जोड़ें</button></div>
   </section>
   <section class="card">
-    <div class="row" style="align-items:center"><h3>प्रोडक्ट और रेट</h3><button class="btn" id="addP" style="flex:none">+ प्रोडक्ट</button></div>
+    <div class="row" style="align-items:center"><h3>प्रोडक्ट और रेट</h3><button class="btn" id="stickBtn" type="button" style="flex:none">🏷️ स्टिकर QR</button><button class="btn" id="addP" style="flex:none">+ प्रोडक्ट</button></div>
     <p class="muted" style="margin:0;font-size:.85rem">यहाँ रेट सेव करेंगे तो बिल बनाते समय प्रोडक्ट चुनते ही रेट अपने आप भर जाएगा।</p>
     <div class="tablebox"><table class="num"><thead><tr><th>प्रोडक्ट</th><th>यूनिट</th><th class="r">रेट</th>${s.gstOn?`<th>HSN</th><th class="r">GST%</th>`:""}<th></th></tr></thead><tbody>
     ${state.products.length?state.products.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.unit)}</td><td class="r">${inr(p.rate)}</td>${s.gstOn?`<td>${esc(p.hsn||"–")}</td><td class="r">${esc(p.gst)}%</td>`:""}<td class="r"><button class="btn small ghost" data-pedit="${esc(p.id)}">बदलें</button></td></tr>`).join(""):`<tr><td colspan="5" class="empty">अभी कोई प्रोडक्ट नहीं</td></tr>`}
@@ -974,6 +993,7 @@ function viewSettings(v){
   <p class="muted" style="font-size:.85rem" hidden>${state.mode==="db"?"आपका डेटा ऑनलाइन सेव होता है, फ़ोन और कंप्यूटर दोनों पर यही दिखेगा।":"अभी डेटा सिर्फ़ इसी डिवाइस में सेव हो रहा है। claude.ai में साइन इन करके खोलें तो ऑनलाइन सेव होगा।"}</p>`;
   $("#s_gst").onchange=e=>{ $("#gstrow").hidden=!e.target.checked; };
   $("#sf").onsubmit=async e=>{ e.preventDefault(); await save("settings",null,{name:$("#s_name").value.trim()||"Divine Elite Oil",phone:$("#s_phone").value.trim(),address:$("#s_addr").value.trim(),prefix:$("#s_prefix").value.trim()||"DEO-",footer:$("#s_footer").value.trim(),gstOn:$("#s_gst").checked,gstin:$("#s_gstin").value.trim(),gstIncl:$("#s_incl").value==="1"}); toast("सेटिंग सेव हो गई"); };
+  $("#stickBtn").onclick=()=>openStickers();
   $("#addP").onclick=()=>editProduct(null);
   $("#bkDown").onclick=async()=>{
     const data={app:"divine-elite-oil-billing",version:1,exportedAt:new Date().toISOString(),settings:state.settings,customers:state.customers,products:state.products,bills:state.bills,purchases:state.purchases};
@@ -995,6 +1015,101 @@ function viewSettings(v){
   v.querySelectorAll("[data-rmuser]").forEach(b=>b.onclick=async()=>{ const id=b.dataset.rmuser; if(confirmStaffDel!==id){ confirmStaffDel=id; render(); return; } confirmStaffDel=null;
     try{ await FBX.del("users/"+id); toast("हटा दिया, अब वो लॉगिन नहीं कर पाएंगे"); }catch(_){ toast("हटाया नहीं जा सका"); } });
 }
+// ---------- Sticker QR codes and scanner ----------
+const UCODE={"लीटर":"L","ml":"ml","kg":"kg","ग्राम":"g"}; const UNCODE={L:"लीटर",ml:"ml",kg:"kg",g:"ग्राम"};
+const qrPayload=(pid,q,u)=>"DEO|"+pid+"|"+q+"|"+(UCODE[u]||u);
+function parseQr(t){ const m=String(t||"").trim().split("|"); if(m[0]!=="DEO"||m.length<4) return null; return {pid:m[1],qty:+m[2],unit:UNCODE[m[3]]||m[3]}; }
+async function ensureLib(globalName,url){ if(!window[globalName]) await loadScript(url); return window[globalName]; }
+const QRGEN_URL="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js", JSQR_URL="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+async function qrDataUrl(text){ const qrcode=await ensureLib("qrcode",QRGEN_URL); const q=qrcode(0,"M"); q.addData(text); q.make(); return q.createDataURL(6,2); }
+const STICK_SIZES=[[100,"ml"],[200,"ml"],[250,"ml"],[500,"ml"],[1,"लीटर"],[2,"लीटर"],[5,"लीटर"],[15,"लीटर"],[1,"kg"],[5,"kg"],[15,"kg"]];
+let stickSel={prods:new Set(), sizes:new Set(["500|ml","1|लीटर","5|लीटर"]), copies:3};
+function openStickers(){
+  const ps=state.products.filter(p=>(p.unit||"लीटर")==="लीटर").sort((a,b)=>a.name.localeCompare(b.name));
+  if(!stickSel.prods.size) ps.forEach(p=>stickSel.prods.add(p.id));
+  const root=$("#modalRoot");
+  root.innerHTML=`<div class="modal" id="mbg"><div class="card" role="dialog" aria-label="स्टिकर QR">
+    <div class="row" style="align-items:center"><h3>🏷️ स्टिकर के लिए QR</h3><button class="btn ghost small" id="skx" style="flex:none">बंद करें</button></div>
+    <p class="muted" style="margin:0;font-size:.9rem">हर स्टिकर पर QR, तेल का नाम, मात्रा और दाम छपेगा। बिल बनाते समय “📷 स्टिकर स्कैन करें” दबाकर बोतल का QR दिखाएँ, सामान अपने-आप जुड़ जाएगा।</p>
+    <b>कौन से तेल</b>
+    <div class="segs">${ps.map(p=>`<label class="check chip"><input type="checkbox" data-sp="${esc(p.id)}" ${stickSel.prods.has(p.id)?"checked":""}> ${esc(p.name)}</label>`).join("")}</div>
+    <b>कौन सी मात्रा</b>
+    <div class="segs">${STICK_SIZES.map(([q,u])=>`<label class="check chip"><input type="checkbox" data-ss="${q}|${u}" ${stickSel.sizes.has(q+"|"+u)?"checked":""}> ${q} ${u}</label>`).join("")}</div>
+    <div class="row"><label>दूसरी मात्रा (जैसे 750 ml)<input id="skCustom" placeholder="750 ml"></label><label>हर स्टिकर कितनी बार<input type="number" id="skCopies" min="1" max="50" value="${stickSel.copies}"></label></div>
+    <button class="btn primary" id="skGo">स्टिकर PDF बनाएं</button>
+    <p class="muted" style="margin:0;font-size:.85rem">A4 पेज पर 24 स्टिकर (3×8) आते हैं। किसी भी प्रिंट वाले से A4 स्टिकर शीट पर छपवा लें। दाम बदलने पर नया PDF बना लें, QR वही रहेगा।</p>
+  </div></div>`;
+  const close=()=>{ root.innerHTML=""; }; $("#skx").onclick=close;
+  root.querySelectorAll("[data-sp]").forEach(c=>c.onchange=()=>c.checked?stickSel.prods.add(c.dataset.sp):stickSel.prods.delete(c.dataset.sp));
+  root.querySelectorAll("[data-ss]").forEach(c=>c.onchange=()=>c.checked?stickSel.sizes.add(c.dataset.ss):stickSel.sizes.delete(c.dataset.ss));
+  $("#skGo").onclick=async()=>{ const btn=$("#skGo"); stickSel.copies=Math.max(1,Math.min(50,+$("#skCopies").value||1));
+    const sizes=[...stickSel.sizes].map(x=>{ const [q,u]=x.split("|"); return [+q,u]; });
+    const cm=$("#skCustom").value.trim().match(/^([\d.]+)\s*(ml|लीटर|l|L|litre|liter|kg|ग्राम|g)$/); if(cm){ const u={l:"लीटर",L:"लीटर",litre:"लीटर",liter:"लीटर",g:"ग्राम"}[cm[2]]||cm[2]; sizes.push([+cm[1],u]); } else if($("#skCustom").value.trim()){ toast("मात्रा ऐसे लिखें: 750 ml या 3 लीटर या 2 kg"); return; }
+    const chosen=ps.filter(p=>stickSel.prods.has(p.id));
+    if(!chosen.length||!sizes.length){ toast("तेल और मात्रा चुनें"); return; }
+    btn.disabled=true; btn.textContent="बन रहा है…";
+    try{ await makeStickerPdf(chosen,sizes,stickSel.copies); }catch(e){ toast("PDF नहीं बना, इंटरनेट देखें"); }
+    btn.disabled=false; btn.textContent="स्टिकर PDF बनाएं"; };
+}
+async function makeStickerPdf(prods,sizes,copies){
+  const labels=[]; for(const p of prods) for(const [q,u] of sizes){ const it={qty:q,unit:u,rate:+p.rate||0,kgPerL:prodKgpl(p)}; const img=await qrDataUrl(qrPayload(p.id,q,u)); for(let c=0;c<copies;c++) labels.push({p,q,u,price:lineAmt(it),img}); }
+  const per=24, pages=[]; for(let i=0;i<labels.length;i+=per) pages.push(labels.slice(i,i+per));
+  const pdf=new window.jspdf.jsPDF({unit:"mm",format:"a4",compress:true});
+  for(let pi=0;pi<pages.length;pi++){
+    const host=document.createElement("div"); host.style.cssText="position:fixed;left:-10000px;top:0";
+    host.innerHTML=`<div style="width:794px;height:1123px;background:#fff;padding:30px 20px;box-sizing:border-box;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:132px;gap:0;font-family:Mukta,'Noto Sans Devanagari',Arial,sans-serif">
+      ${pages[pi].map(l=>`<div style="border:1px dashed #bbb;display:flex;align-items:center;gap:6px;padding:6px 8px;box-sizing:border-box;overflow:hidden">
+        <img src="${l.img}" style="width:104px;height:104px;flex:none;image-rendering:pixelated">
+        <div style="line-height:1.2;min-width:0"><img src="${LOGO_URL}" style="height:24px;width:auto;display:block;margin-bottom:3px">
+          <div style="font-weight:700;font-size:14px;color:#0b3d10">${esc(l.p.name)}</div>
+          <div style="font-size:18px;font-weight:800">${l.q} ${esc(l.u)}</div>
+          <div style="font-size:14px;color:#b3261e;font-weight:700">MRP ₹${Math.round(l.price)}</div></div></div>`).join("")}</div>`;
+    document.body.appendChild(host);
+    await Promise.all([...host.querySelectorAll("img")].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r;})));
+    try{ await document.fonts.ready; }catch(_){}
+    const canvas=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:"#ffffff",logging:false}); host.remove();
+    if(pi) pdf.addPage(); pdf.addImage(canvas.toDataURL("image/jpeg",0.92),"JPEG",0,0,210,297);
+  }
+  await saveFile("Divine_stickers.pdf",pdf.output("blob"),{share:true,text:"Divine Elite Oil स्टिकर"});
+}
+let scanStop=null;
+async function openScanner(){
+  const root=$("#modalRoot"); let added=[];
+  root.innerHTML=`<div class="modal" id="mbg"><div class="card" role="dialog" aria-label="स्कैन">
+    <div class="row" style="align-items:center"><h3>📷 स्टिकर स्कैन करें</h3><button class="btn primary small" id="scx" style="flex:none">हो गया</button></div>
+    <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3"><video id="scv" playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+      <div style="position:absolute;inset:18%;border:3px solid rgba(255,255,255,.85);border-radius:12px"></div></div>
+    <div id="scmsg" class="notice">QR को डिब्बे के अंदर रखें…</div>
+    <div class="list" id="sclist"></div></div></div>`;
+  const msg=t=>{ const m=$("#scmsg"); if(m) m.textContent=t; };
+  let stream=null, raf=0, last="", lastAt=0, stopped=false;
+  const stop=()=>{ stopped=true; cancelAnimationFrame(raf); if(stream) stream.getTracks().forEach(t=>t.stop()); scanStop=null; };
+  scanStop=stop;
+  $("#scx").onclick=()=>{ stop(); root.innerHTML=""; render(); };
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false}); }
+  catch(e){ msg("कैमरा नहीं खुला। फ़ोन की सेटिंग में इस ऐप को कैमरा की इजाज़त दें।"); return; }
+  if(stopped){ stream.getTracks().forEach(t=>t.stop()); return; }
+  const video=$("#scv"); video.srcObject=stream; try{ await video.play(); }catch(_){}
+  let detector=null; try{ if("BarcodeDetector" in window){ const f=await BarcodeDetector.getSupportedFormats(); if(f.includes("qr_code")) detector=new BarcodeDetector({formats:["qr_code"]}); } }catch(_){}
+  let jsQR=null; if(!detector){ try{ jsQR=await ensureLib("jsQR",JSQR_URL); }catch(_){ msg("स्कैनर लोड नहीं हुआ, इंटरनेट देखें"); return; } }
+  const c=document.createElement("canvas"), ctx=c.getContext("2d",{willReadFrequently:true});
+  const onCode=text=>{ const now=Date.now(); const same=text===last&&now-lastAt<1200; lastAt=now; last=text; if(same) return; // same sticker held in view counts once; move away and back to add another
+    const d=parseQr(text); if(!d){ msg("यह हमारा स्टिकर QR नहीं है"); return; }
+    const p=state.products.find(x=>x.id===d.pid); if(!p){ msg("यह प्रोडक्ट लिस्ट में नहीं मिला"); return; }
+    const ex=draft.items.find(it=>it.pid===p.id&&it.unit===d.unit&&+it.rate===+p.rate);
+    if(ex) ex.qty=r2((+ex.qty||0)+d.qty);
+    else { const blank=draft.items.findIndex(it=>!String(it.name).trim()); const it={name:p.name,pid:p.id,qty:d.qty,unit:d.unit,rate:+p.rate||0,kgPerL:prodKgpl(p),gst:p.gst!=null?+p.gst:5,hsn:p.hsn||""}; if(blank>=0) draft.items[blank]=it; else draft.items.push(it); }
+    try{ navigator.vibrate&&navigator.vibrate(120); }catch(_){}
+    added.unshift(p.name+" · "+d.qty+" "+d.unit); msg("✓ जुड़ गया: "+p.name+" "+d.qty+" "+d.unit+"  (अगला स्कैन करें)");
+    const l=$("#sclist"); if(l) l.innerHTML=added.slice(0,8).map(t=>`<div class="li"><span class="main">${esc(t)}</span></div>`).join(""); };
+  const tick=async()=>{ if(stopped) return;
+    if(video.readyState>=2){
+      try{ if(detector){ const r=await detector.detect(video); if(r[0]) onCode(r[0].rawValue); }
+        else { const w=640, h=Math.round(video.videoHeight*640/video.videoWidth)||480; c.width=w; c.height=h; ctx.drawImage(video,0,0,w,h); const r=jsQR(ctx.getImageData(0,0,w,h).data,w,h,{inversionAttempts:"dontInvert"}); if(r) onCode(r.data); } }catch(_){}
+    }
+    raf=requestAnimationFrame(tick); };
+  tick();
+}
 function editProduct(id){
   const p=id?state.products.find(x=>x.id===id):{name:"",unit:"लीटर",rate:"",gst:5};
   const root=$("#modalRoot");
@@ -1005,12 +1120,13 @@ function editProduct(id){
     <label>रेट (₹)<input type="number" step="any" min="0" id="p_rate" required value="${esc(p.rate)}"></label>
     <label>GST %<select id="p_gst">${[0,5,12,18].map(g=>`<option ${+g===+p.gst?"selected":""}>${g}</option>`).join("")}</select></label>
     <label>HSN कोड<input id="p_hsn" inputmode="numeric" value="${esc(p.hsn||"")}" placeholder="जैसे: 1514"></label></div>
+    <label>1 लीटर का वज़न (kg) <small class="muted">किलो में बेचने पर दाम इसी से निकलेगा</small><input type="number" step="0.001" min="0.5" max="1.5" id="p_kgpl" value="${esc(prodKgpl(id?p:null))}"></label>
     <div class="row"><button class="btn primary" type="submit">सेव करें</button><button class="btn ghost" type="button" id="px">रद्द करें</button>
     ${id?`<button class="btn ghost danger" type="button" id="pdel">${confirmPDel===id?"पक्का हटाएं?":"हटाएं"}</button>`:""}</div>
   </form></div>`;
   const close=()=>{ root.innerHTML=""; confirmPDel=null; };
   $("#px").onclick=close; $("#mbg").onclick=e=>{ if(e.target.id==="mbg") close(); };
-  $("#pf").onsubmit=async e=>{ e.preventDefault(); await save("products",id||uid(),{name:$("#p_name").value.trim(),unit:$("#p_unit").value,rate:+$("#p_rate").value||0,gst:+$("#p_gst").value,hsn:$("#p_hsn").value.trim()}); close(); toast("प्रोडक्ट सेव हो गया"); };
+  $("#pf").onsubmit=async e=>{ e.preventDefault(); await save("products",id||uid(),{name:$("#p_name").value.trim(),unit:$("#p_unit").value,rate:+$("#p_rate").value||0,gst:+$("#p_gst").value,hsn:$("#p_hsn").value.trim(),kgPerL:+$("#p_kgpl").value||0.91}); close(); toast("प्रोडक्ट सेव हो गया"); };
   if($("#pdel")) $("#pdel").onclick=async()=>{ if(confirmPDel!==id){ confirmPDel=id; editProduct(id); return; } close(); await removeRec("products",id); };
 }
 
