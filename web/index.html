@@ -33,7 +33,7 @@
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 [hidden]{display:none!important}
 img{max-width:100%}
-body.ro #addC, body.ro [data-edit], body.ro [data-bill], body.ro #mpaid, body.ro #addPur, body.ro [data-pe], body.ro #medit, body.ro #mdel{display:none!important}
+body.ro #addC, body.ro [data-edit], body.ro [data-bill], body.ro #mpaid, body.ro #addPur, body.ro [data-pe], body.ro #medit, body.ro #mret, body.ro #mdel{display:none!important}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
 .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:980px;margin:0 auto}
@@ -245,22 +245,27 @@ function inWords(num){
   let w="Rupees "+(out.join(" ")||"Zero"); if(paise) w+=" and "+two(paise)+" Paise"; return w+" Only";
 }
 const billDue = b => r2((b.total||0)-(b.paid||0));
-function custStats(cid){ const bs=state.bills.filter(b=>b.customerId===cid); return { count:bs.length, total:r2(bs.reduce((a,b)=>a+(b.total||0),0)), due:r2(bs.reduce((a,b)=>a+Math.max(0,billDue(b)),0)), last:bs.map(b=>b.date).sort().pop()||"" }; }
-function nextBillNo(){ const s=S(); let max=0; state.bills.forEach(b=>{ const m=String(b.no||"").match(/(\d+)\s*$/); if(m) max=Math.max(max,+m[1]); }); return s.prefix+String(max+1).padStart(4,"0"); }
+function custStats(cid){ const bs=state.bills.filter(b=>b.customerId===cid); return { count:bs.filter(b=>!isRet(b)).length, total:r2(bs.reduce((a,b)=>a+(b.total||0),0)), due:r2(Math.max(0,bs.reduce((a,b)=>a+(isRet(b)?billDue(b):Math.max(0,billDue(b))),0))), last:bs.map(b=>b.date).sort().pop()||"" }; }
+const isRet=b=>b&&b.type==="return";
+function nextCnNo(){ let max=0; state.bills.filter(isRet).forEach(b=>{ const m=String(b.no||"").match(/(\d+)\s*$/); if(m) max=Math.max(max,+m[1]); }); return "CN-"+String(max+1).padStart(4,"0"); }
+// absolute-value view of a credit note, for printing
+const absView=b=>isRet(b)?{...b,sub:Math.abs(b.sub||0),tax:Math.abs(b.tax||0),total:Math.abs(b.total||0),paid:Math.abs(b.paid||0),discount:Math.abs(b.discount||0)}:b;
+function nextBillNo(){ const s=S(); let max=0; state.bills.filter(b=>!isRet(b)).forEach(b=>{ const m=String(b.no||"").match(/(\d+)\s*$/); if(m) max=Math.max(max,+m[1]); }); return s.prefix+String(max+1).padStart(4,"0"); }
 
-function billText(b){
-  const s=S(); const L=[];
-  if(b.gstOn) L.push("*TAX INVOICE / टैक्स इनवॉइस*");
+function billText(b0){
+  const s=S(); const L=[]; const ret=isRet(b0); const b=absView(b0);
+  if(ret) L.push("*CREDIT NOTE / वापसी पर्ची*"); else if(b.gstOn) L.push("*TAX INVOICE / टैक्स इनवॉइस*");
   L.push("*"+s.name+"*"); L.push("शुद्ध · प्राकृतिक · बिना रिफाइन · कोल्ड प्रेस"); if(s.address) L.push(s.address); if(s.phone) L.push("फ़ोन: "+s.phone); if(b.gstOn&&s.gstin) L.push("GSTIN: "+s.gstin);
-  L.push(""); L.push("बिल नं: "+b.no+"   तारीख: "+showDate(b.date)); L.push("ग्राहक: "+(b.customerName||"नकद ग्राहक")); if(b.gstOn&&b.customerGstin) L.push("ग्राहक GSTIN: "+b.customerGstin);
+  L.push(""); L.push((ret?"क्रेडिट नोट नं: ":"बिल नं: ")+b.no+"   तारीख: "+showDate(b.date)); if(ret) L.push("असली बिल: "+(b.againstNo||"")); L.push("ग्राहक: "+(b.customerName||"नकद ग्राहक")); if(b.gstOn&&b.customerGstin) L.push("ग्राहक GSTIN: "+b.customerGstin);
   L.push("------------------------------");
   (b.items||[]).forEach(it=>L.push(it.name+(b.gstOn&&it.hsn?" (HSN "+it.hsn+", GST "+it.gst+"%)":"")+"  "+fmtQty(it)+(it.unit==="kg"||it.unit==="ग्राम"?" (≈"+(Math.round(toLitres(it)*1000)/1000)+" लीटर)":"")+" × "+inr(it.rate)+(isOilUnit(it.unit)?"/लीटर":"")+" = "+inr(lineAmt(it))));
   L.push("------------------------------");
   if(b.discount) L.push("छूट: -"+inr(b.discount));
   if(b.gstOn&&b.tax){ const cg=r2(b.tax/2); L.push("टैक्स योग्य राशि: "+inr(b.sub)); L.push("CGST: "+inr(cg)+"  SGST: "+inr(r2(b.tax-cg))); if(s.gstIncl) L.push("(रेट में GST शामिल है)"); }
-  L.push("*कुल राशि: "+inr(b.total)+"*");
+  if(ret){ L.push("*वापसी राशि: "+inr(b.total)+"*"); L.push(b.refundHow||""); }
+  else { L.push("*कुल राशि: "+inr(b.total)+"*");
   L.push("जमा: "+inr(b.paid||0)+" ("+(b.mode||"नकद")+")");
-  const due=billDue(b); if(due>0) L.push("*बाकी: "+inr(due)+"*");
+  const due=billDue(b); if(due>0) L.push("*बाकी: "+inr(due)+"*"); }
   L.push(""); L.push(s.footer);
   L.push(""); L.push("👉 हमसे जुड़ें (Instagram, Facebook, WhatsApp ग्रुप):"); L.push(LINKS_URL);
   return L.join("\n");
@@ -464,21 +469,25 @@ async function saveBill(){
 let confirmDel=null;
 function openBill(id){
   const b=state.bills.find(x=>x.id===id); if(!b) return;
-  const root=$("#modalRoot"); const due=billDue(b);
+  const root=$("#modalRoot"); const ret=isRet(b); const due=ret?0:billDue(b);
+  const rets=ret?[]:state.bills.filter(x=>isRet(x)&&x.against===b.id);
   root.innerHTML=`<div class="modal" id="mbg"><div class="card" role="dialog" aria-label="बिल">
-    <div class="row" style="align-items:center"><h3>बिल ${esc(b.no)}</h3><button class="btn ghost small" id="mclose" style="flex:none">बंद करें</button></div>
+    <div class="row" style="align-items:center"><h3>${ret?"↩️ वापसी (क्रेडिट नोट) ":"बिल "}${esc(b.no)}</h3><button class="btn ghost small" id="mclose" style="flex:none">बंद करें</button></div>
     <div class="receipt" id="rcpt"></div>
     ${b.customerPhone?"":`<p class="notice" style="margin:0">इस बिल में नंबर नहीं है। व्हाट्सएप खुलने पर ग्राहक चुन लें।</p>`}
     <div class="row">
-      <button class="btn primary" id="mpdf">PDF बिल बनाएं</button>
+      <button class="btn primary" id="mpdf">${ret?"PDF क्रेडिट नोट बनाएं":"PDF बिल बनाएं"}</button>
       <a class="btn wa" target="_blank" rel="noopener" href="${esc(waLink(b.customerPhone,billText(b)))}">व्हाट्सएप खोलें</a>
       <button class="btn" id="mcopy">टेक्स्ट कॉपी करें</button>
     </div>
     <p class="muted" style="margin:0;font-size:.85rem">“PDF बिल बनाएं” दबाएं, फिर “PDF भेजें” से सीधे WhatsApp चुनें और ग्राहक को भेज दें।</p>
     <div class="row">
       ${due>0?`<button class="btn" id="mpaid">पूरा पेमेंट मिल गया</button>`:""}
-      ${isAdmin()?`<button class="btn" id="medit">बिल बदलें</button><button class="btn ghost danger" id="mdel">${confirmDel===id?"पक्का हटाएं?":"बिल हटाएं"}</button>`:""}
+      ${!ret&&!isPartner()?`<button class="btn" id="mret">↩️ वापसी (माल लौटाया)</button>`:""}
+      ${isAdmin()&&!ret?`<button class="btn" id="medit">बिल बदलें</button>`:""}${isAdmin()?`<button class="btn ghost danger" id="mdel">${confirmDel===id?"पक्का हटाएं?":(ret?"वापसी हटाएं":"बिल हटाएं")}</button>`:""}
     </div>
+    ${rets.length?`<div class="notice">इस बिल पर वापसी: ${rets.map(r=>`<button class="btn small ghost" data-oret="${esc(r.id)}">${esc(r.no)} · ${inr(Math.abs(r.total))}</button>`).join(" ")}</div>`:""}
+    ${ret?`<div class="notice">असली बिल: <button class="btn small ghost" data-oret="${esc(b.against)}">${esc(b.againstNo||"")}</button></div>`:""}
     ${b.createdBy||b.editedBy?`<p class="muted" style="margin:0;font-size:.8rem">${b.createdBy?"बनाया: "+esc(b.createdBy):""}${b.editedBy?" · आख़िरी बदलाव: "+esc(b.editedBy)+" ("+esc(new Date(b.editedAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}))+")":""}</p>`:""}
   </div></div>`;
   $("#rcpt").textContent=billText(b);
@@ -486,6 +495,8 @@ function openBill(id){
   $("#mclose").onclick=close; $("#mbg").onclick=e=>{ if(e.target.id==="mbg") close(); };
   $("#mpdf").onclick=()=>downloadPdf(b,$("#mpdf"));
   $("#mcopy").onclick=()=>{ const t=billText(b); navigator.clipboard.writeText(t).then(()=>toast("कॉपी हो गया")).catch(()=>{ const r=document.createRange(); r.selectNodeContents($("#rcpt")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast("टेक्स्ट चुन लिया, कॉपी करें"); }); };
+  if($("#mret")) $("#mret").onclick=()=>openReturn(b.id);
+  root.querySelectorAll("[data-oret]").forEach(x=>x.onclick=()=>openBill(x.dataset.oret));
   if($("#mpaid")) $("#mpaid").onclick=async()=>{ await save("bills",b.id,{...b,paid:b.total,mode:b.mode==="उधार"?"नकद":b.mode}); toast("पेमेंट दर्ज हो गया"); openBill(b.id); };
   if($("#medit")) $("#medit").onclick=()=>{ root.innerHTML=""; confirmDel=null;
     draft={ editId:b.id, editNo:b.no, editCreatedAt:b.createdAt, createdBy:b.createdBy||"", customerId:b.customerId||"", customerName:b.customerName==="नकद ग्राहक"?"":(b.customerName||""), customerPhone:b.customerPhone||"", customerGstin:b.customerGstin||"",
@@ -495,6 +506,41 @@ function openBill(id){
   if($("#mdel")) $("#mdel").onclick=async()=>{ if(confirmDel!==id){ confirmDel=id; openBill(id); return; } confirmDel=null; root.innerHTML=""; await removeRec("bills",id); toast("बिल हटा दिया"); };
 }
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") $("#modalRoot").innerHTML=""; });
+
+// ---------- Sales return (credit note) ----------
+function returnedQty(billId,idx){ return state.bills.filter(x=>isRet(x)&&x.against===billId).reduce((a,r)=>a+(r.items||[]).filter(it=>it.idx===idx).reduce((q,it)=>q+(+it.qty||0),0),0); }
+function openReturn(billId){
+  const b=state.bills.find(x=>x.id===billId); if(!b) return; const s=S();
+  const lines=(b.items||[]).map((it,i)=>({it,i,left:r2((+it.qty||0)-returnedQty(b.id,i))}));
+  const gross=(b.items||[]).reduce((a,it)=>a+lineAmt(it),0); const dFrac=gross>0?(+b.discount||0)/gross:0;
+  const owes=billDue(b)>0;
+  const root=$("#modalRoot");
+  root.innerHTML=`<div class="modal" id="mbg"><form class="card" id="rf">
+    <div class="row" style="align-items:center"><h3>↩️ वापसी: बिल ${esc(b.no)}</h3><button class="btn ghost small" type="button" id="rx" style="flex:none">बंद करें</button></div>
+    <p class="muted" style="margin:0;font-size:.9rem">${esc(b.customerName)} · ${esc(showDate(b.date))}. जो माल वापस आया, उसकी मात्रा डालें। बाकी बिल वैसा ही रहेगा।</p>
+    ${lines.map(l=>`<div class="row" style="align-items:end"><div style="flex:2 1 180px"><b>${esc(l.it.name)}</b><br><span class="muted" style="font-size:.85rem">बेचा ${esc(fmtQty(l.it))} × ${inr(l.it.rate)}${isOilUnit(l.it.unit)?"/लीटर":""}${l.left<+l.it.qty?" · पहले लौटा "+r2(+l.it.qty-l.left)+" "+esc(l.it.unit):""}</span></div>
+      <label style="flex:1 1 120px">वापस (${esc(l.it.unit||"")})<input type="number" step="any" min="0" max="${l.left}" inputmode="decimal" data-rq="${l.i}" placeholder="0" ${l.left<=0?"disabled":""}></label></div>`).join("")}
+    <label>पैसे का क्या किया<select id="rhow">
+      <option value="cash">नकद वापस दिए</option><option value="upi">UPI / ऑनलाइन वापस दिए</option>
+      <option value="adjust" ${owes?"selected":""}>उधार में से घटाया (पैसे नहीं दिए)</option></select></label>
+    <label>कारण (ज़रूरी नहीं)<input id="rwhy" placeholder="जैसे: ग्राहक को नहीं चाहिए था"></label>
+    <div class="totals num" id="rtot"></div>
+    <div class="row"><button class="btn primary" type="submit" id="rsave">वापसी सेव करें</button></div>
+  </form></div>`;
+  const pick=()=>lines.map(l=>{ const el=root.querySelector(`[data-rq="${l.i}"]`); const q=Math.min(l.left,Math.max(0,+el.value||0)); return q>0?{...l.it,qty:r2(q),idx:l.i}:null; }).filter(Boolean);
+  const calc=()=>{ const items=pick(); const g=items.reduce((a,it)=>a+lineAmt(it),0); return {items,c:calcBill(items,r2(g*dFrac),!!b.gstOn,s.gstIncl),disc:r2(g*dFrac)}; };
+  const show=()=>{ const {c}=calc(); $("#rtot").innerHTML=`${b.gstOn?`<span class="muted">टैक्स योग्य</span><span>${inr(c.sub)}</span><span class="muted">GST</span><span>${inr(c.tax)}</span>`:""}<span class="grand">वापसी राशि</span><span class="grand">${inr(c.total)}</span>`; };
+  root.querySelectorAll("[data-rq]").forEach(x=>x.oninput=show); show();
+  $("#rx").onclick=()=>openBill(b.id);
+  $("#rf").onsubmit=async e=>{ e.preventDefault(); const {items,c,disc}=calc(); if(!items.length){ toast("वापस आई मात्रा डालें"); return; }
+    const how=$("#rhow").value; const why=$("#rwhy").value.trim();
+    const howTxt={cash:"नकद वापस दिए",upi:"UPI / ऑनलाइन वापस दिए",adjust:"उधार में से घटाया"}[how];
+    const id=uid();
+    const rec={type:"return",no:nextCnNo(),date:today(),against:b.id,againstNo:b.no,againstDate:b.date,customerId:b.customerId||"",customerName:b.customerName,customerPhone:b.customerPhone||"",customerGstin:b.customerGstin||"",
+      items,discount:-disc,sub:-c.sub,tax:-c.tax,total:-c.total,paid:how==="adjust"?0:-c.total,mode:how==="cash"?"नकद":how==="upi"?"UPI / QR":"उधार",refundHow:"पैसे: "+howTxt+(why?" · कारण: "+why:""),
+      gstOn:!!b.gstOn,createdAt:Date.now(),createdBy:meName()};
+    $("#rsave").disabled=true; await save("bills",id,rec); toast("वापसी दर्ज हो गई: "+rec.no); openBill(id); };
+}
 
 // ---------- Saving and sharing files ----------
 const MAX_DOC=700*1024; // Firestore doc limit is 1 MB; keep files well under it (free plan has no file storage)
@@ -564,8 +610,9 @@ const LOGO_URL=new URL("logo.png",location.href).href;
 const QR_URL=new URL("qr-links.png",location.href).href;
 const LINKS_URL="https://1981varunverma-hue.github.io/Divine-elite-oil/links.html";
 function invoiceHtml(b){
+  const ret=isRet(b); b=absView(b);
   const s=S(); const gst=!!b.gstOn; const c=calcBill(b.items||[],b.discount,gst,s.gstIncl);
-  const due=billDue(b);
+  const due=ret?0:billDue(b);
   const th='style="border:1px solid #333;padding:6px 6px;background:#f1efe4;font-size:12px;text-align:left"';
   const td='style="border:1px solid #333;padding:6px 6px;font-size:13px;vertical-align:top"';
   const tdr='style="border:1px solid #333;padding:6px 6px;font-size:13px;text-align:right;white-space:nowrap"';
@@ -581,8 +628,10 @@ function invoiceHtml(b){
       <div style="font-size:13px;margin-top:6px;max-width:420px">${esc(s.address)}</div>
       <div style="font-size:13px">फ़ोन / WhatsApp: ${esc(s.phone)}</div>
       ${gst&&s.gstin?`<div style="font-size:13px;font-weight:700">GSTIN: ${esc(s.gstin)}</div>`:""}</div>
-    <div style="text-align:right"><div style="font-size:20px;font-weight:700;letter-spacing:.04em">${gst?"TAX INVOICE":"BILL / INVOICE"}</div>
-      <div style="font-size:13px;margin-top:6px">Invoice No: <b>${esc(b.no)}</b></div>
+    <div style="text-align:right"><div style="font-size:20px;font-weight:700;letter-spacing:.04em">${ret?"CREDIT NOTE":gst?"TAX INVOICE":"BILL / INVOICE"}</div>
+      ${ret?`<div style="font-size:12px;color:#b3261e;font-weight:700">Sales Return / वापसी</div>`:""}
+      <div style="font-size:13px;margin-top:6px">${ret?"Credit Note No":"Invoice No"}: <b>${esc(b.no)}</b></div>
+      ${ret?`<div style="font-size:13px">Against Invoice: <b>${esc(b.againstNo||"")}</b> (${esc(showDate(b.againstDate||""))})</div>`:""}
       <div style="font-size:13px">Date: <b>${esc(showDate(b.date))}</b></div>
       ${gst?`<div style="font-size:13px">Place of Supply: Haryana (06)</div>`:""}</div>
   </div>
@@ -605,8 +654,8 @@ function invoiceHtml(b){
       ${gst?`<tr><td style="padding:4px 8px">Taxable Value</td><td style="padding:4px 8px;text-align:right">${money(c.sub)}</td></tr>
       <tr><td style="padding:4px 8px">CGST</td><td style="padding:4px 8px;text-align:right">${money(r2(c.tax/2))}</td></tr>
       <tr><td style="padding:4px 8px">SGST</td><td style="padding:4px 8px;text-align:right">${money(r2(c.tax-r2(c.tax/2)))}</td></tr>`:""}
-      <tr><td style="padding:8px;font-weight:700;font-size:16px;border-top:2px solid #1d5e2c">Grand Total</td><td style="padding:8px;text-align:right;font-weight:700;font-size:16px;border-top:2px solid #1d5e2c">₹ ${money(b.total)}</td></tr>
-      <tr><td style="padding:4px 8px">Paid (${esc(b.mode||"")})</td><td style="padding:4px 8px;text-align:right">${money(b.paid||0)}</td></tr>
+      <tr><td style="padding:8px;font-weight:700;font-size:16px;border-top:2px solid #1d5e2c">${ret?"Credit Amount":"Grand Total"}</td><td style="padding:8px;text-align:right;font-weight:700;font-size:16px;border-top:2px solid #1d5e2c">₹ ${money(b.total)}</td></tr>
+      ${ret?`<tr><td style="padding:4px 8px" colspan="2">${esc(b.refundHow||"")}</td></tr>`:`<tr><td style="padding:4px 8px">Paid (${esc(b.mode||"")})</td><td style="padding:4px 8px;text-align:right">${money(b.paid||0)}</td></tr>`}
       ${due>0?`<tr><td style="padding:4px 8px;color:#b3261e;font-weight:700">Balance Due</td><td style="padding:4px 8px;text-align:right;color:#b3261e;font-weight:700">${money(due)}</td></tr>`:""}
     </table>
   </div>
@@ -656,8 +705,8 @@ function viewBills(v){
     </div>
     <div class="muted">${bs.length} बिल · कुल <b class="num" style="color:var(--fg)">${inr(tot)}</b></div>
     <div class="list">${bs.length?bs.map(b=>{ const due=billDue(b); return `<div class="li">
-      <div class="main"><b>${esc(b.customerName)}</b><span class="muted" style="font-size:.85rem">${esc(b.no)} · ${esc(showDate(b.date))} · ${esc(b.mode||"")}</span></div>
-      <div class="num" style="text-align:right"><b>${inr(b.total)}</b><br>${due>0?`<span class="pill due">बाकी ${inr(due)}</span>`:`<span class="pill ok">पूरा जमा</span>`}</div>
+      <div class="main"><b>${isRet(b)?"↩️ ":""}${esc(b.customerName)}</b><span class="muted" style="font-size:.85rem">${esc(b.no)} · ${esc(showDate(b.date))} · ${isRet(b)?"वापसी, बिल "+esc(b.againstNo||""):esc(b.mode||"")}</span></div>
+      <div class="num" style="text-align:right"><b>${inr(b.total)}</b><br>${isRet(b)?`<span class="pill due">वापसी</span>`:due>0?`<span class="pill due">बाकी ${inr(due)}</span>`:`<span class="pill ok">पूरा जमा</span>`}</div>
       <div class="acts"><button class="btn small" data-open="${esc(b.id)}">देखें / PDF</button><a class="btn small wa" target="_blank" rel="noopener" href="${esc(waLink(b.customerPhone,billText(b)))}">व्हाट्सएप</a></div>
     </div>`;}).join(""):`<div class="empty">अभी कोई बिल नहीं है।<br><button class="btn primary" data-tab="bill" style="margin-top:10px">पहला बिल बनाएं</button></div>`}</div>
   </section>`;
@@ -670,9 +719,9 @@ function viewBills(v){
 // ---------- Sales report ----------
 function viewReport(v){
   const bs=state.bills; const t=today(); const yd=ymd(new Date(Date.now()-864e5)); const ym=t.slice(0,7);
-  const sum=f=>{ const x=bs.filter(f); return {n:x.length, amt:r2(x.reduce((a,b)=>a+(b.total||0),0))}; };
+  const sum=f=>{ const x=bs.filter(f); return {n:x.filter(b=>!isRet(b)).length, amt:r2(x.reduce((a,b)=>a+(b.total||0),0))}; };
   const tD=sum(b=>b.date===t), yD=sum(b=>b.date===yd), mD=sum(b=>b.date.slice(0,7)===ym), all=sum(()=>true);
-  const dueAll=r2(bs.reduce((a,b)=>a+Math.max(0,billDue(b)),0));
+  const dueAll=r2(Math.max(0,bs.reduce((a,b)=>a+(isRet(b)?billDue(b):Math.max(0,billDue(b))),0)));
   // last 30 days bars
   const days=[]; for(let i=29;i>=0;i--){ const d=ymd(new Date(Date.now()-i*864e5)); days.push({d,amt:bs.filter(b=>b.date===d).reduce((a,b)=>a+(b.total||0),0)}); }
   const mx=Math.max(1,...days.map(x=>x.amt));
@@ -684,10 +733,10 @@ function viewReport(v){
   const monRows=MONTHS.map((n,i)=>{ const k=ui.repYear+"-"+pad(i+1); const x=bs.filter(b=>b.date.slice(0,7)===k); return {k,n,c:x.length,amt:x.reduce((a,b)=>a+(b.total||0),0)}; });
   const years=[...new Set([t.slice(0,4),...bs.map(b=>b.date.slice(0,4))])].sort().reverse();
   // top products this month
-  const prod={}; bs.filter(b=>b.date.slice(0,7)===ui.repMonth).forEach(b=>(b.items||[]).forEach(it=>{ const k=it.name; prod[k]=prod[k]||{q:0,amt:0,u:isOilUnit(it.unit)?"लीटर":it.unit}; prod[k].q+=isOilUnit(it.unit)?toLitres(it):+it.qty; prod[k].amt+=lineAmt(it); }));
+  const prod={}; bs.filter(b=>b.date.slice(0,7)===ui.repMonth).forEach(b=>(b.items||[]).forEach(it=>{ const k=it.name; prod[k]=prod[k]||{q:0,amt:0,u:isOilUnit(it.unit)?"लीटर":it.unit}; prod[k].q+=(isRet(b)?-1:1)*(isOilUnit(it.unit)?toLitres(it):+it.qty); prod[k].amt+=(isRet(b)?-1:1)*lineAmt(it); }));
   const prodRows=Object.entries(prod).sort((a,b)=>b[1].amt-a[1].amt).slice(0,8);
   const seenModes=[...new Set([...MODES,...bs.map(b=>b.mode).filter(Boolean)])];
-  const modeRows=seenModes.map(m=>{ const pick=f=>m==="उधार"?bs.filter(f).reduce((a,b)=>a+Math.max(0,billDue(b)),0):bs.filter(b=>f(b)&&b.mode===m).reduce((a,b)=>a+(+b.paid||0),0);
+  const modeRows=seenModes.map(m=>{ const pick=f=>m==="उधार"?bs.filter(f).reduce((a,b)=>a+(isRet(b)?billDue(b):Math.max(0,billDue(b))),0):bs.filter(b=>f(b)&&b.mode===m).reduce((a,b)=>a+(+b.paid||0),0);
     return {m,t:r2(pick(b=>b.date===t)),mo:r2(pick(b=>b.date.slice(0,7)===ui.repMonth))}; });
   v.innerHTML=`<h2>सेल रिपोर्ट</h2>
   <div class="stats">
@@ -733,8 +782,8 @@ function viewReport(v){
   $("#rm").onchange=e=>{ if(e.target.value){ ui.repMonth=e.target.value; render(); } };
   $("#salesCsv").onclick=()=>{ const rows=bs.filter(b=>b.date.slice(0,7)===ui.repMonth).sort((a,b)=>a.date.localeCompare(b.date)||String(a.no).localeCompare(String(b.no)));
     if(!rows.length){ toast("इस महीने कोई बिल नहीं"); return; }
-    const head=["Invoice No","Date","Customer","Customer GSTIN","Phone","Taxable Value","CGST","SGST","Total","Paid","Payment Mode","Balance Due","Items"];
-    const data=rows.map(b=>{ const cg=r2((b.tax||0)/2); return [b.no,showDate(b.date),b.customerName,b.customerGstin||"",b.customerPhone||"",b.gstOn?b.sub:b.total,b.gstOn?cg:0,b.gstOn?r2((b.tax||0)-cg):0,b.total,b.paid||0,b.mode||"",billDue(b),(b.items||[]).map(it=>it.name+" "+it.qty+" "+(it.unit||"")+(it.hsn?" HSN "+it.hsn:"")).join("; ")]; });
+    const head=["Type","Invoice No","Date","Customer","Customer GSTIN","Phone","Taxable Value","CGST","SGST","Total","Paid","Payment Mode","Balance Due","Items"];
+    const data=rows.map(b=>{ const cg=r2((b.tax||0)/2); return [isRet(b)?"Credit Note (against "+(b.againstNo||"")+")":"Invoice",b.no,showDate(b.date),b.customerName,b.customerGstin||"",b.customerPhone||"",b.gstOn?b.sub:b.total,b.gstOn?cg:0,b.gstOn?r2((b.tax||0)-cg):0,b.total,b.paid||0,b.mode||"",billDue(b),(b.items||[]).map(it=>it.name+" "+it.qty+" "+(it.unit||"")+(it.hsn?" HSN "+it.hsn:"")).join("; ")]; });
     saveCsv("Sales_"+ui.repMonth+".csv",head,data); };
   $("#ry").onchange=e=>{ ui.repYear=e.target.value; render(); };
 }
@@ -768,7 +817,7 @@ function viewCustomers(v){
 function openCustomer(id){
   const c=state.customers.find(x=>x.id===id); if(!c) return; const st=custStats(id);
   const bs=state.bills.filter(b=>b.customerId===id).sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt-a.createdAt));
-  const prod={}; bs.forEach(b=>(b.items||[]).forEach(it=>{ prod[it.name]=prod[it.name]||{q:0,amt:0,u:isOilUnit(it.unit)?"लीटर":it.unit}; prod[it.name].q+=isOilUnit(it.unit)?toLitres(it):+it.qty; prod[it.name].amt+=lineAmt(it); }));
+  const prod={}; bs.forEach(b=>(b.items||[]).forEach(it=>{ prod[it.name]=prod[it.name]||{q:0,amt:0,u:isOilUnit(it.unit)?"लीटर":it.unit}; prod[it.name].q+=(isRet(b)?-1:1)*(isOilUnit(it.unit)?toLitres(it):+it.qty); prod[it.name].amt+=(isRet(b)?-1:1)*lineAmt(it); }));
   const root=$("#modalRoot");
   root.innerHTML=`<div class="modal" id="mbg"><div class="card" role="dialog" aria-label="ग्राहक का हिसाब">
     <div class="row" style="align-items:center"><h3>${esc(c.name)}</h3><button class="btn ghost small" id="mclose" style="flex:none">बंद करें</button></div>
@@ -1016,54 +1065,46 @@ function viewSettings(v){
     try{ await FBX.del("users/"+id); toast("हटा दिया, अब वो लॉगिन नहीं कर पाएंगे"); }catch(_){ toast("हटाया नहीं जा सका"); } });
 }
 // ---------- Sticker QR codes and scanner ----------
-const UCODE={"लीटर":"L","ml":"ml","kg":"kg","ग्राम":"g"}; const UNCODE={L:"लीटर",ml:"ml",kg:"kg",g:"ग्राम"};
-const qrPayload=(pid,q,u)=>"DEO|"+pid+"|"+q+"|"+(UCODE[u]||u);
-function parseQr(t){ const m=String(t||"").trim().split("|"); if(m[0]!=="DEO"||m.length<4) return null; return {pid:m[1],qty:+m[2],unit:UNCODE[m[3]]||m[3]}; }
+// One QR per oil: "DEO|<productId>". After a scan the staff picks the quantity.
+const UNCODE={L:"लीटर",ml:"ml",kg:"kg",g:"ग्राम"};
+const qrPayload=pid=>"DEO|"+pid;
+function parseQr(t){ const m=String(t||"").trim().split("|"); if(m[0]!=="DEO"||!m[1]) return null; return {pid:m[1],qty:m[2]?+m[2]:0,unit:m[3]?(UNCODE[m[3]]||m[3]):""}; }
 async function ensureLib(globalName,url){ if(!window[globalName]) await loadScript(url); return window[globalName]; }
 const QRGEN_URL="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js", JSQR_URL="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
-async function qrDataUrl(text){ const qrcode=await ensureLib("qrcode",QRGEN_URL); const q=qrcode(0,"M"); q.addData(text); q.make(); return q.createDataURL(6,2); }
-const STICK_SIZES=[[100,"ml"],[200,"ml"],[250,"ml"],[500,"ml"],[1,"लीटर"],[2,"लीटर"],[5,"लीटर"],[15,"लीटर"],[1,"kg"],[5,"kg"],[15,"kg"]];
-let stickSel={prods:new Set(), sizes:new Set(["500|ml","1|लीटर","5|लीटर"]), copies:3};
+async function qrDataUrl(text){ const qrcode=await ensureLib("qrcode",QRGEN_URL); const q=qrcode(0,"M"); q.addData(text); q.make(); return q.createDataURL(8,2); }
+let stickSel={prods:new Set(), copies:6};
 function openStickers(){
   const ps=state.products.filter(p=>(p.unit||"लीटर")==="लीटर").sort((a,b)=>a.name.localeCompare(b.name));
   if(!stickSel.prods.size) ps.forEach(p=>stickSel.prods.add(p.id));
   const root=$("#modalRoot");
   root.innerHTML=`<div class="modal" id="mbg"><div class="card" role="dialog" aria-label="स्टिकर QR">
     <div class="row" style="align-items:center"><h3>🏷️ स्टिकर के लिए QR</h3><button class="btn ghost small" id="skx" style="flex:none">बंद करें</button></div>
-    <p class="muted" style="margin:0;font-size:.9rem">हर स्टिकर पर QR, तेल का नाम, मात्रा और दाम छपेगा। बिल बनाते समय “📷 स्टिकर स्कैन करें” दबाकर बोतल का QR दिखाएँ, सामान अपने-आप जुड़ जाएगा।</p>
+    <p class="muted" style="margin:0;font-size:.9rem">हर तेल का एक QR बनेगा, उस पर सिर्फ़ लोगो और तेल का नाम होगा। बिल बनाते समय “📷 स्टिकर स्कैन करें” दबाकर QR दिखाएँ, तेल अपने-आप आ जाएगा। फिर मात्रा (ml, लीटर या kg) चुनें, दाम अपने-आप लग जाएगा।</p>
     <b>कौन से तेल</b>
     <div class="segs">${ps.map(p=>`<label class="check chip"><input type="checkbox" data-sp="${esc(p.id)}" ${stickSel.prods.has(p.id)?"checked":""}> ${esc(p.name)}</label>`).join("")}</div>
-    <b>कौन सी मात्रा</b>
-    <div class="segs">${STICK_SIZES.map(([q,u])=>`<label class="check chip"><input type="checkbox" data-ss="${q}|${u}" ${stickSel.sizes.has(q+"|"+u)?"checked":""}> ${q} ${u}</label>`).join("")}</div>
-    <div class="row"><label>दूसरी मात्रा (जैसे 750 ml)<input id="skCustom" placeholder="750 ml"></label><label>हर स्टिकर कितनी बार<input type="number" id="skCopies" min="1" max="50" value="${stickSel.copies}"></label></div>
+    <label>हर तेल के कितने स्टिकर<input type="number" id="skCopies" min="1" max="96" value="${stickSel.copies}"></label>
     <button class="btn primary" id="skGo">स्टिकर PDF बनाएं</button>
-    <p class="muted" style="margin:0;font-size:.85rem">A4 पेज पर 24 स्टिकर (3×8) आते हैं। किसी भी प्रिंट वाले से A4 स्टिकर शीट पर छपवा लें। दाम बदलने पर नया PDF बना लें, QR वही रहेगा।</p>
+    <p class="muted" style="margin:0;font-size:.85rem">A4 पेज पर 24 स्टिकर (3×8) आते हैं। किसी भी प्रिंट वाले से A4 स्टिकर शीट पर छपवा लें। दाम बदलने पर भी स्टिकर वही चलेंगे।</p>
   </div></div>`;
-  const close=()=>{ root.innerHTML=""; }; $("#skx").onclick=close;
+  $("#skx").onclick=()=>{ root.innerHTML=""; };
   root.querySelectorAll("[data-sp]").forEach(c=>c.onchange=()=>c.checked?stickSel.prods.add(c.dataset.sp):stickSel.prods.delete(c.dataset.sp));
-  root.querySelectorAll("[data-ss]").forEach(c=>c.onchange=()=>c.checked?stickSel.sizes.add(c.dataset.ss):stickSel.sizes.delete(c.dataset.ss));
-  $("#skGo").onclick=async()=>{ const btn=$("#skGo"); stickSel.copies=Math.max(1,Math.min(50,+$("#skCopies").value||1));
-    const sizes=[...stickSel.sizes].map(x=>{ const [q,u]=x.split("|"); return [+q,u]; });
-    const cm=$("#skCustom").value.trim().match(/^([\d.]+)\s*(ml|लीटर|l|L|litre|liter|kg|ग्राम|g)$/); if(cm){ const u={l:"लीटर",L:"लीटर",litre:"लीटर",liter:"लीटर",g:"ग्राम"}[cm[2]]||cm[2]; sizes.push([+cm[1],u]); } else if($("#skCustom").value.trim()){ toast("मात्रा ऐसे लिखें: 750 ml या 3 लीटर या 2 kg"); return; }
-    const chosen=ps.filter(p=>stickSel.prods.has(p.id));
-    if(!chosen.length||!sizes.length){ toast("तेल और मात्रा चुनें"); return; }
+  $("#skGo").onclick=async()=>{ const btn=$("#skGo"); stickSel.copies=Math.max(1,Math.min(96,+$("#skCopies").value||1));
+    const chosen=ps.filter(p=>stickSel.prods.has(p.id)); if(!chosen.length){ toast("तेल चुनें"); return; }
     btn.disabled=true; btn.textContent="बन रहा है…";
-    try{ await makeStickerPdf(chosen,sizes,stickSel.copies); }catch(e){ toast("PDF नहीं बना, इंटरनेट देखें"); }
+    try{ await makeStickerPdf(chosen,stickSel.copies); }catch(e){ toast("PDF नहीं बना, इंटरनेट देखें"); }
     btn.disabled=false; btn.textContent="स्टिकर PDF बनाएं"; };
 }
-async function makeStickerPdf(prods,sizes,copies){
-  const labels=[]; for(const p of prods) for(const [q,u] of sizes){ const it={qty:q,unit:u,rate:+p.rate||0,kgPerL:prodKgpl(p)}; const img=await qrDataUrl(qrPayload(p.id,q,u)); for(let c=0;c<copies;c++) labels.push({p,q,u,price:lineAmt(it),img}); }
+async function makeStickerPdf(prods,copies){
+  const labels=[]; for(const p of prods){ const img=await qrDataUrl(qrPayload(p.id)); for(let c=0;c<copies;c++) labels.push({p,img}); }
   const per=24, pages=[]; for(let i=0;i<labels.length;i+=per) pages.push(labels.slice(i,i+per));
   const pdf=new window.jspdf.jsPDF({unit:"mm",format:"a4",compress:true});
   for(let pi=0;pi<pages.length;pi++){
     const host=document.createElement("div"); host.style.cssText="position:fixed;left:-10000px;top:0";
-    host.innerHTML=`<div style="width:794px;height:1123px;background:#fff;padding:30px 20px;box-sizing:border-box;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:132px;gap:0;font-family:Mukta,'Noto Sans Devanagari',Arial,sans-serif">
-      ${pages[pi].map(l=>`<div style="border:1px dashed #bbb;display:flex;align-items:center;gap:6px;padding:6px 8px;box-sizing:border-box;overflow:hidden">
-        <img src="${l.img}" style="width:104px;height:104px;flex:none;image-rendering:pixelated">
-        <div style="line-height:1.2;min-width:0"><img src="${LOGO_URL}" style="height:24px;width:auto;display:block;margin-bottom:3px">
-          <div style="font-weight:700;font-size:14px;color:#0b3d10">${esc(l.p.name)}</div>
-          <div style="font-size:18px;font-weight:800">${l.q} ${esc(l.u)}</div>
-          <div style="font-size:14px;color:#b3261e;font-weight:700">MRP ₹${Math.round(l.price)}</div></div></div>`).join("")}</div>`;
+    host.innerHTML=`<div style="width:794px;height:1123px;background:#fff;padding:30px 20px;box-sizing:border-box;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:132px;font-family:Mukta,'Noto Sans Devanagari',Arial,sans-serif">
+      ${pages[pi].map(l=>`<div style="border:1px dashed #bbb;display:flex;align-items:center;gap:8px;padding:6px 8px;box-sizing:border-box;overflow:hidden">
+        <img src="${l.img}" style="width:112px;height:112px;flex:none;image-rendering:pixelated">
+        <div style="line-height:1.2;min-width:0"><img src="${LOGO_URL}" style="height:30px;width:auto;display:block;margin-bottom:6px">
+          <div style="font-weight:800;font-size:17px;color:#0b3d10">${esc(l.p.name)}</div></div></div>`).join("")}</div>`;
     document.body.appendChild(host);
     await Promise.all([...host.querySelectorAll("img")].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r;})));
     try{ await document.fonts.ready; }catch(_){}
@@ -1072,13 +1113,20 @@ async function makeStickerPdf(prods,sizes,copies){
   }
   await saveFile("Divine_stickers.pdf",pdf.output("blob"),{share:true,text:"Divine Elite Oil स्टिकर"});
 }
+const PICK_SIZES=[[100,"ml"],[200,"ml"],[250,"ml"],[500,"ml"],[1,"लीटर"],[2,"लीटर"],[5,"लीटर"],[10,"लीटर"],[15,"लीटर"],[50,"लीटर"],[1,"kg"],[2,"kg"],[5,"kg"],[15,"kg"]];
+function addScanned(p,qty,unit){
+  const ex=draft.items.find(it=>it.pid===p.id&&it.unit===unit&&+it.rate===+p.rate);
+  if(ex) ex.qty=r2((+ex.qty||0)+qty);
+  else { const blank=draft.items.findIndex(it=>!String(it.name).trim()); const it={name:p.name,pid:p.id,qty,unit,rate:+p.rate||0,kgPerL:prodKgpl(p),gst:p.gst!=null?+p.gst:5,hsn:p.hsn||""}; if(blank>=0) draft.items[blank]=it; else draft.items.push(it); }
+}
 let scanStop=null;
 async function openScanner(){
-  const root=$("#modalRoot"); let added=[];
+  const root=$("#modalRoot"); let added=[]; let pending=null;
   root.innerHTML=`<div class="modal" id="mbg"><div class="card" role="dialog" aria-label="स्कैन">
     <div class="row" style="align-items:center"><h3>📷 स्टिकर स्कैन करें</h3><button class="btn primary small" id="scx" style="flex:none">हो गया</button></div>
-    <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3"><video id="scv" playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+    <div id="scCam" style="position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3"><video id="scv" playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
       <div style="position:absolute;inset:18%;border:3px solid rgba(255,255,255,.85);border-radius:12px"></div></div>
+    <div id="scPick" hidden></div>
     <div id="scmsg" class="notice">QR को डिब्बे के अंदर रखें…</div>
     <div class="list" id="sclist"></div></div></div>`;
   const msg=t=>{ const m=$("#scmsg"); if(m) m.textContent=t; };
@@ -1086,6 +1134,23 @@ async function openScanner(){
   const stop=()=>{ stopped=true; cancelAnimationFrame(raf); if(stream) stream.getTracks().forEach(t=>t.stop()); scanStop=null; };
   scanStop=stop;
   $("#scx").onclick=()=>{ stop(); root.innerHTML=""; render(); };
+  const showList=()=>{ const l=$("#sclist"); if(l) l.innerHTML=added.slice(0,8).map(t=>`<div class="li"><span class="main">✓ ${esc(t)}</span></div>`).join(""); };
+  const ask=p=>{ pending=p; $("#scCam").hidden=true; const box=$("#scPick"); box.hidden=false;
+    box.innerHTML=`<div class="notice" style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:1.15rem"><b>${esc(p.name)}</b> <span class="muted">· ${inr(p.rate)}/लीटर</span></div>
+      <b>कितना देना है?</b>
+      <div class="qchips">${PICK_SIZES.map(([q,u])=>`<button type="button" class="chip" style="font-size:1rem;padding:8px 12px" data-pq="${q}" data-pu="${u}">${q} ${u}</button>`).join("")}</div>
+      <div class="row" style="align-items:end"><label>या खुद लिखें<input type="number" step="any" min="0" inputmode="decimal" id="pkQ" placeholder="जैसे 3"></label>
+        <label>यूनिट<select id="pkU">${OIL_UNITS.map(u=>`<option>${u}</option>`).join("")}</select></label>
+        <button class="btn primary" type="button" id="pkOk" style="flex:none">जोड़ें</button></div>
+      <button class="btn ghost small" type="button" id="pkNo">रद्द करें</button></div>`;
+    const done=(q,u)=>{ if(!(q>0)){ toast("मात्रा डालें"); return; } addScanned(p,q,u); try{ navigator.vibrate&&navigator.vibrate(80); }catch(_){}
+      const it={qty:q,unit:u,rate:+p.rate||0,kgPerL:prodKgpl(p)}; added.unshift(p.name+" · "+q+" "+u+" · "+inr(lineAmt(it))); showList(); back("✓ जुड़ गया। अगला QR दिखाएँ या “हो गया” दबाएँ।"); };
+    box.querySelectorAll("[data-pq]").forEach(b=>b.onclick=()=>done(+b.dataset.pq,b.dataset.pu));
+    $("#pkOk").onclick=()=>done(+$("#pkQ").value,$("#pkU").value);
+    $("#pkNo").onclick=()=>back("QR को डिब्बे के अंदर रखें…");
+    msg("मात्रा चुनें"); };
+  const back=t=>{ pending=null; const box=$("#scPick"); if(box){ box.hidden=true; box.innerHTML=""; } const cam=$("#scCam"); if(cam) cam.hidden=false; lastAt=Date.now(); msg(t); }; // same sticker must leave the view before it opens again
   try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false}); }
   catch(e){ msg("कैमरा नहीं खुला। फ़ोन की सेटिंग में इस ऐप को कैमरा की इजाज़त दें।"); return; }
   if(stopped){ stream.getTracks().forEach(t=>t.stop()); return; }
@@ -1093,17 +1158,13 @@ async function openScanner(){
   let detector=null; try{ if("BarcodeDetector" in window){ const f=await BarcodeDetector.getSupportedFormats(); if(f.includes("qr_code")) detector=new BarcodeDetector({formats:["qr_code"]}); } }catch(_){}
   let jsQR=null; if(!detector){ try{ jsQR=await ensureLib("jsQR",JSQR_URL); }catch(_){ msg("स्कैनर लोड नहीं हुआ, इंटरनेट देखें"); return; } }
   const c=document.createElement("canvas"), ctx=c.getContext("2d",{willReadFrequently:true});
-  const onCode=text=>{ const now=Date.now(); const same=text===last&&now-lastAt<1200; lastAt=now; last=text; if(same) return; // same sticker held in view counts once; move away and back to add another
+  const onCode=text=>{ if(pending) return; const now=Date.now(); const same=text===last&&now-lastAt<1200; lastAt=now; last=text; if(same) return;
     const d=parseQr(text); if(!d){ msg("यह हमारा स्टिकर QR नहीं है"); return; }
-    const p=state.products.find(x=>x.id===d.pid); if(!p){ msg("यह प्रोडक्ट लिस्ट में नहीं मिला"); return; }
-    const ex=draft.items.find(it=>it.pid===p.id&&it.unit===d.unit&&+it.rate===+p.rate);
-    if(ex) ex.qty=r2((+ex.qty||0)+d.qty);
-    else { const blank=draft.items.findIndex(it=>!String(it.name).trim()); const it={name:p.name,pid:p.id,qty:d.qty,unit:d.unit,rate:+p.rate||0,kgPerL:prodKgpl(p),gst:p.gst!=null?+p.gst:5,hsn:p.hsn||""}; if(blank>=0) draft.items[blank]=it; else draft.items.push(it); }
-    try{ navigator.vibrate&&navigator.vibrate(120); }catch(_){}
-    added.unshift(p.name+" · "+d.qty+" "+d.unit); msg("✓ जुड़ गया: "+p.name+" "+d.qty+" "+d.unit+"  (अगला स्कैन करें)");
-    const l=$("#sclist"); if(l) l.innerHTML=added.slice(0,8).map(t=>`<div class="li"><span class="main">${esc(t)}</span></div>`).join(""); };
+    const p=state.products.find(x=>x.id===d.pid); if(!p){ msg("यह तेल प्रोडक्ट लिस्ट में नहीं मिला"); return; }
+    try{ navigator.vibrate&&navigator.vibrate(60); }catch(_){}
+    ask(p); };
   const tick=async()=>{ if(stopped) return;
-    if(video.readyState>=2){
+    if(!pending&&video.readyState>=2){
       try{ if(detector){ const r=await detector.detect(video); if(r[0]) onCode(r[0].rawValue); }
         else { const w=640, h=Math.round(video.videoHeight*640/video.videoWidth)||480; c.width=w; c.height=h; ctx.drawImage(video,0,0,w,h); const r=jsQR(ctx.getImageData(0,0,w,h).data,w,h,{inversionAttempts:"dontInvert"}); if(r) onCode(r.data); } }catch(_){}
     }
