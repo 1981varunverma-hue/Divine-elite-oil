@@ -40,6 +40,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
 header.top .wrap{display:flex;align-items:center;gap:12px;padding-block:10px}
 .logo{height:42px;width:auto;flex:none;background:#fff;border-radius:8px;padding:3px 6px}
+.mthumbs{display:flex;flex-wrap:wrap;gap:6px}.mthumb{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;font-size:1.6rem;background:var(--surface);text-align:center;line-height:1}.mthumb small{display:block;font-size:.55rem}
 .login-logo{display:block;width:min(260px,80%);height:auto;margin:4px auto 8px}
 .brand{font-family:var(--display);font-weight:700;font-size:1.25rem;line-height:1.1}
 .brand small{display:block;font-family:var(--body);font-weight:500;font-size:.8rem;color:var(--muted)}
@@ -477,6 +478,54 @@ function openBill(id){
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") $("#modalRoot").innerHTML=""; });
 
 // ---------- Saving and sharing files ----------
+const MAX_DOC=700*1024; // Firestore doc limit is 1 MB; keep files well under it (free plan has no file storage)
+function loadScript(src){ return new Promise((r,j)=>{ const t=document.createElement("script"); t.src=src; t.onload=r; t.onerror=j; document.head.appendChild(t); }); }
+async function ensurePdfJs(){
+  if(window.pdfjsLib) return;
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+function blobToDataUrl(blob){ return new Promise((r,j)=>{ const fr=new FileReader(); fr.onload=()=>r(String(fr.result)); fr.onerror=j; fr.readAsDataURL(blob); }); }
+async function dataUrlToBlob(u){ return (await fetch(u)).blob(); }
+async function shrinkImage(src,maxBytes){ // src: Blob or canvas
+  let c=src;
+  if(!(src instanceof HTMLCanvasElement)){ const bmp=await createImageBitmap(src); c=document.createElement("canvas"); const k=Math.min(1,1600/Math.max(bmp.width,bmp.height)); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k); c.getContext("2d").drawImage(bmp,0,0,c.width,c.height); }
+  for(let q=0.75, scale=1; ; ){
+    let cc=c; if(scale<1){ cc=document.createElement("canvas"); cc.width=Math.round(c.width*scale); cc.height=Math.round(c.height*scale); cc.getContext("2d").drawImage(c,0,0,cc.width,cc.height); }
+    const b=await new Promise(r=>cc.toBlob(r,"image/jpeg",q));
+    if(b.size<=maxBytes||scale<0.3) return b;
+    if(q>0.5) q-=0.1; else scale*=0.8;
+  }
+}
+// Turns a photo or PDF into something that fits in one Firestore document.
+async function packBillFile(file){
+  if(file.type==="application/pdf"||/\.pdf$/i.test(file.name)){
+    if(file.size<=MAX_DOC) return {name:file.name,type:"application/pdf",data:await blobToDataUrl(file)};
+    await ensurePdfJs();
+    const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise; const n=Math.min(3,pdf.numPages); const pages=[];
+    for(let i=1;i<=n;i++){ const page=await pdf.getPage(i); const vp=page.getViewport({scale:1.5}); const c=document.createElement("canvas"); c.width=vp.width; c.height=vp.height;
+      await page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise; pages.push(await blobToDataUrl(await shrinkImage(c,Math.floor(MAX_DOC/n*0.72)))); }
+    return {name:file.name.replace(/\.pdf$/i,"")+".jpg",type:"image/jpeg",pages,note:pdf.numPages>3?"पहले 3 पेज":""};
+  }
+  if(file.type.startsWith("image/")) return {name:(file.name||"bill").replace(/\.[^.]+$/,"")+".jpg",type:"image/jpeg",data:await blobToDataUrl(await shrinkImage(file,MAX_DOC*0.72))};
+  throw new Error("type");
+}
+async function openBillFile(fileId,fileName){
+  toast("फ़ाइल खुल रही है…");
+  const f=await FBX.get("purchaseFiles/"+fileId); if(!f){ toast("फ़ाइल नहीं मिली"); return; }
+  const list=f.pages&&f.pages.length?f.pages:[f.data];
+  for(let i=0;i<list.length;i++){ const nm=list.length>1?(fileName||f.name).replace(/(\.[^.]+)?$/,"_page"+(i+1)+"$1"):(fileName||f.name); await saveFile(nm,await dataUrlToBlob(list[i]),{share:false}); }
+}
+async function shareFiles(files,text){ // files: File[]
+  const C=window.Capacitor;
+  if(C&&C.isNativePlatform&&C.isNativePlatform()&&C.Plugins&&C.Plugins.Filesystem&&C.Plugins.Share){
+    const uris=[]; for(const f of files){ const w=await C.Plugins.Filesystem.writeFile({path:f.name.replace(/[^\w.-]+/g,"_"),data:await blobToB64(f),directory:"CACHE"}); uris.push(w.uri); }
+    try{ await C.Plugins.Share.share({text,files:uris,dialogTitle:"व्हाट्सएप चुनें"}); }catch(_){ }
+    return "shared";
+  }
+  if(navigator.canShare&&navigator.canShare({files})){ try{ await navigator.share({files,text}); return "shared"; }catch(e){ return e&&e.name==="AbortError"?"cancel":"fail"; } }
+  return "unsupported";
+}
 function blobToB64(blob){ return new Promise((r,j)=>{ const fr=new FileReader(); fr.onload=()=>r(String(fr.result).split(",")[1]); fr.onerror=j; fr.readAsDataURL(blob); }); }
 async function saveFile(name,blob,{share=false,text=""}={}){
   const C=window.Capacitor;
@@ -766,12 +815,13 @@ function viewPurchases(v){
     <div class="list">${ps.length?ps.map(p=>`<div class="li">
       <div class="main"><b>${esc(p.supplier||"सप्लायर")}</b><span class="muted" style="font-size:.85rem">${esc(p.invoiceNo||"")} · ${esc(showDate(p.date))}${p.supplierGstin?" · "+esc(p.supplierGstin):""}</span></div>
       <div class="num" style="text-align:right"><b>${inr(p.total)}</b><br><span class="muted" style="font-size:.8rem">GST ${inr((+p.cgst||0)+(+p.sgst||0)+(+p.igst||0))}</span></div>
-      <div class="acts"><button class="btn small ghost" data-pe="${esc(p.id)}">बदलें</button></div>
+      <div class="acts">${p.fileId?`<button class="btn small" data-pf="${esc(p.id)}">📎 बिल देखें</button>`:""}<button class="btn small ghost" data-pe="${esc(p.id)}">बदलें</button></div>
     </div>`).join(""):`<div class="empty">${esc(monthName(ui.purMonth))} में कोई ख़रीद बिल नहीं।<br>सप्लायर का बिल दर्ज करने के लिए ऊपर “+ ख़रीद बिल डालें” दबाएं।</div>`}</div>
   </section>`;
   $("#pm").onchange=e=>{ if(e.target.value){ ui.purMonth=e.target.value; render(); } };
   $("#addPur").onclick=()=>editPurchase(null);
   v.querySelectorAll("[data-pe]").forEach(b=>b.onclick=()=>editPurchase(b.dataset.pe));
+  v.querySelectorAll("[data-pf]").forEach(b=>b.onclick=()=>{ const p=state.purchases.find(x=>x.id===b.dataset.pf); if(p) openBillFile(p.fileId,p.fileName).catch(()=>toast("फ़ाइल नहीं खुली")); });
   $("#purCsv").onclick=()=>{ if(!ps.length){ toast("इस महीने कोई ख़रीद नहीं"); return; }
     saveCsv("Purchases_"+ui.purMonth+".csv",["Date","Supplier","Supplier GSTIN","Invoice No","Taxable Value","CGST","SGST","IGST","Total","Payment Mode","Items"],
       ps.slice().reverse().map(p=>[showDate(p.date),p.supplier,p.supplierGstin,p.invoiceNo,p.taxable,p.cgst,p.sgst,p.igst,p.total,p.mode||"",p.items||""])); };
@@ -799,22 +849,38 @@ function editPurchase(id){
     <div class="row"><label>टैक्स योग्य राशि<input type="number" step="any" id="f_tx" value="${esc(p.taxable)}"></label><label>CGST<input type="number" step="any" id="f_cg" value="${esc(p.cgst)}"></label><label>SGST<input type="number" step="any" id="f_sgst" value="${esc(p.sgst)}"></label><label>IGST<input type="number" step="any" id="f_ig" value="${esc(p.igst)}"></label></div>
     <div class="row"><label>कुल राशि<input type="number" step="any" id="f_tot" value="${esc(p.total)}" required></label><label>पेमेंट<select id="f_mode">${MODES.map(m=>`<option ${m===p.mode?"selected":""}>${m}</option>`).join("")}</select></label></div>
     <label>सामान<textarea id="f_items" style="min-height:60px">${esc(p.items)}</textarea></label>
+    <div class="notice" style="display:flex;flex-direction:column;gap:8px">
+      <b>📎 बिल की फ़ोटो या PDF</b>
+      ${p.fileId?`<div class="row" style="align-items:center"><span id="f_cur" style="flex:1">✓ जुड़ी हुई है: ${esc(p.fileName||"बिल")}</span><button class="btn small" type="button" id="f_view" style="flex:none">देखें</button></div>`:""}
+      <div class="row"><label class="btn" style="flex-direction:row;color:var(--fg);font-size:1rem">📷 फ़ोटो खींचें<input type="file" id="f_cam" accept="image/*" capture="environment" hidden></label>
+        <label class="btn" style="flex-direction:row;color:var(--fg);font-size:1rem">📁 फ़ोटो / PDF चुनें<input type="file" id="f_file" accept="image/*,application/pdf,.pdf" hidden></label></div>
+      <span id="f_chosen" class="muted" style="font-size:.85rem">${p.fileId?"नई फ़ाइल चुनेंगे तो पुरानी की जगह लगेगी।":"WhatsApp पर आई फ़ोटो/PDF पहले फ़ोन में सेव करें, फिर यहाँ से चुनें।"}</span>
+    </div>
     <div class="row"><button class="btn primary" type="submit" id="psave">सेव करें</button>${id?`<button class="btn ghost danger" type="button" id="pdel2">${confirmPurDel===id?"पक्का हटाएं?":"हटाएं"}</button>`:""}</div>
   </form></div>`;
   const close=()=>{ root.innerHTML=""; confirmPurDel=null; };
   $("#px2").onclick=close;
+  const pick=e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; file=f; $("#f_chosen").textContent="✓ चुनी गई: "+f.name+" ("+Math.round(f.size/1024)+" KB)"; };
+  $("#f_cam").onchange=pick; $("#f_file").onchange=pick;
+  if($("#f_view")) $("#f_view").onclick=()=>openBillFile(p.fileId,p.fileName).catch(()=>toast("फ़ाइल नहीं खुली"));
   const setv=(sel,v)=>{ if(v!=null&&v!=="") $(sel).value=v; };
   $("#purf").onsubmit=async e=>{ e.preventDefault(); const btn=$("#psave"); btn.disabled=true; btn.textContent="सेव हो रहा है…";
     let fileId=p.fileId||"", fileName=p.fileName||"";
-    if(false){ try{ }catch(_){ toast("बिल की फ़ाइल सेव नहीं हुई, बाकी जानकारी सेव हो रही है"); } }
+    if(file){ try{ btn.textContent="फ़ाइल सेव हो रही है…"; const packed=await packBillFile(file); const newId=uid();
+        await FBX.set("purchaseFiles/"+newId,{...packed,createdAt:Date.now()});
+        if(fileId){ try{ await FBX.del("purchaseFiles/"+fileId); }catch(_){} }
+        fileId=newId; fileName=packed.name; }
+      catch(e){ toast(e&&e.message==="type"?"सिर्फ़ फ़ोटो या PDF जोड़ सकते हैं":"बिल की फ़ाइल सेव नहीं हुई, बाकी जानकारी सेव हो रही है"); } }
     const num=sel=>r2(+$(sel).value||0);
     await save("purchases",id||uid(),{supplier:$("#f_sup").value.trim(),supplierGstin:$("#f_sg").value.trim().toUpperCase(),invoiceNo:$("#f_no").value.trim(),date:$("#f_date").value||today(),
       taxable:num("#f_tx"),cgst:num("#f_cg"),sgst:num("#f_sgst"),igst:num("#f_ig"),total:num("#f_tot"),mode:$("#f_mode").value,items:$("#f_items").value.trim(),fileId,fileName,createdAt:p.createdAt||Date.now()});
     ui.purMonth=($("#f_date").value||today()).slice(0,7); close(); toast("ख़रीद बिल सेव हो गया"); };
-  if($("#pdel2")) $("#pdel2").onclick=async()=>{ if(confirmPurDel!==id){ confirmPurDel=id; editPurchase(id); return; } close(); await removeRec("purchases",id); toast("ख़रीद बिल हटा दिया"); };
+  if($("#pdel2")) $("#pdel2").onclick=async()=>{ if(confirmPurDel!==id){ confirmPurDel=id; editPurchase(id); return; } close(); if(p.fileId){ try{ await FBX.del("purchaseFiles/"+p.fileId); }catch(_){} } await removeRec("purchases",id); toast("ख़रीद बिल हटा दिया"); };
 }
 
 // ---------- WhatsApp messages ----------
+let msgMedia=[]; const mediaUrls=new Map();
+function mediaUrl(f){ if(!mediaUrls.has(f)) mediaUrls.set(f,URL.createObjectURL(f)); return mediaUrls.get(f); }
 function viewMsg(v){
   const withPhone=state.customers.filter(c=>c.phone).map(c=>({...c,st:custStats(c.id)}));
   const f=ui.msgFilter; const cutoff=ymd(new Date(Date.now()-30*864e5));
@@ -828,6 +894,13 @@ function viewMsg(v){
     <div class="segs">${[["offer","नया ऑफर"],["due","बकाया याद"],["festival","त्योहार बधाई"],["stock","नया स्टॉक"]].map(([k,l])=>`<button class="btn small" data-tpl="${k}">${l}</button>`).join("")}</div>
     <label>मैसेज<textarea id="mt">${esc(ui.msgText)}</textarea></label>
     <p class="muted" style="margin:0;font-size:.85rem">{नाम} की जगह हर ग्राहक का नाम और {बाकी} की जगह उसका बकाया अपने आप लग जाएगा।</p>
+    <div class="notice" style="display:flex;flex-direction:column;gap:8px">
+      <b>🖼️ फ़ोटो / वीडियो साथ भेजें (ज़रूरी नहीं)</b>
+      <div class="row"><label class="btn" style="flex-direction:row;color:var(--fg);font-size:1rem">+ फ़ोटो / वीडियो जोड़ें<input type="file" id="mMedia" accept="image/*,video/*" multiple hidden></label>
+        ${msgMedia.length?`<button class="btn small ghost" type="button" id="mMediaClr" style="flex:none">हटाएं</button>`:""}</div>
+      ${msgMedia.length?`<div class="mthumbs">${msgMedia.map(m=>m.type.startsWith("video/")?`<span class="mthumb">🎬<small>${esc(m.name.slice(0,14))}</small></span>`:`<img class="mthumb" src="${esc(mediaUrl(m))}" alt="">`).join("")}</div>`:""}
+      <span class="muted" style="font-size:.85rem">${msgMedia.length?"“भेजें” दबाने पर फ़ोन पूछेगा कहाँ भेजना है। WhatsApp चुनें, फिर उस ग्राहक को चुनें। मैसेज भी साथ जाएगा।":"फ़ोटो/वीडियो जोड़ने पर हर ग्राहक को मैसेज के साथ वह भी जाएगी।"}</span>
+    </div>
   </section>
   <section class="card">
     <h3>2. ग्राहक चुनें</h3>
@@ -840,7 +913,7 @@ function viewMsg(v){
     <h3>3. भेजें <span class="muted" style="font-weight:500;font-size:.9rem">(${chosen.length} चुने · ${chosen.filter(c=>ui.sent.has(c.id)).length} भेजे)</span></h3>
     <p class="notice" style="margin:0">हर ग्राहक के आगे “भेजें” दबाएं। व्हाट्सएप में मैसेज तैयार खुलेगा, वहाँ Send दबाएं और वापस आकर अगले को भेजें।</p>
     <div class="list">${chosen.length?chosen.map(c=>`<div class="li"><div class="main"><b>${esc(c.name)}</b><span class="muted" style="font-size:.85rem">${esc(personal(c).slice(0,70))}${personal(c).length>70?"…":""}</span></div>
-      <a class="btn small ${ui.sent.has(c.id)?"":"wa"}" target="_blank" rel="noopener" data-send="${esc(c.id)}" href="${esc(waLink(c.phone,personal(c)))}">${ui.sent.has(c.id)?"✓ फिर भेजें":"भेजें"}</a></div>`).join(""):`<div class="empty">ऊपर से ग्राहक चुनें</div>`}</div>
+      ${msgMedia.length?`<button class="btn small ${ui.sent.has(c.id)?"":"wa"}" type="button" data-msend="${esc(c.id)}">${ui.sent.has(c.id)?"✓ फिर भेजें":"भेजें"}</button>`:`<a class="btn small ${ui.sent.has(c.id)?"":"wa"}" target="_blank" rel="noopener" data-send="${esc(c.id)}" href="${esc(waLink(c.phone,personal(c)))}">${ui.sent.has(c.id)?"✓ फिर भेजें":"भेजें"}</a>`}</div>`).join(""):`<div class="empty">ऊपर से ग्राहक चुनें</div>`}</div>
   </section>`;
   const T={offer:"नमस्ते {नाम} जी,\nDivine Elite Oil में इस हफ़्ते खास ऑफर! शुद्ध तेल पर विशेष छूट। ऑर्डर के लिए इसी नंबर पर मैसेज करें। 🙏",
     due:"नमस्ते {नाम} जी,\nDivine Elite Oil का आपका {बाकी} बकाया है। कृपया सुविधा अनुसार भुगतान कर दें। धन्यवाद 🙏",
@@ -852,6 +925,14 @@ function viewMsg(v){
   if($("#selAll")) $("#selAll").onchange=e=>{ list.forEach(c=>e.target.checked?ui.msgSel.add(c.id):ui.msgSel.delete(c.id)); render(); };
   v.querySelectorAll("[data-sel]").forEach(b=>b.onchange=()=>{ b.checked?ui.msgSel.add(b.dataset.sel):ui.msgSel.delete(b.dataset.sel); render(); });
   v.querySelectorAll("[data-send]").forEach(a=>a.addEventListener("click",()=>{ ui.sent.add(a.dataset.send); setTimeout(render,300); }));
+  $("#mMedia").onchange=e=>{ const fs=[...(e.target.files||[])]; const big=fs.filter(f=>f.size>60*1024*1024); if(big.length) toast("60 MB से बड़ी वीडियो नहीं जा सकती");
+    msgMedia=msgMedia.concat(fs.filter(f=>f.size<=60*1024*1024)).slice(0,10); render(); };
+  if($("#mMediaClr")) $("#mMediaClr").onclick=()=>{ msgMedia=[]; mediaUrls.forEach(u=>URL.revokeObjectURL(u)); mediaUrls.clear(); render(); };
+  v.querySelectorAll("[data-msend]").forEach(b=>b.onclick=async()=>{ const c=chosen.find(x=>x.id===b.dataset.msend); if(!c) return;
+    const text=personal(c); try{ await navigator.clipboard.writeText(text); }catch(_){}
+    b.disabled=true; const r=await shareFiles(msgMedia,text); b.disabled=false;
+    if(r==="unsupported"){ toast("इस फ़ोन/ब्राउज़र में फ़ोटो सीधे नहीं जा सकती। मैसेज कॉपी हो गया है, WhatsApp में फ़ोटो खुद जोड़ें।"); window.open(waLink(c.phone,text),"_blank"); }
+    if(r!=="cancel"){ ui.sent.add(c.id); render(); } });
 }
 
 // ---------- Settings & products ----------

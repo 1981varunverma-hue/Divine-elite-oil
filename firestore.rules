@@ -52,5 +52,10 @@ service cloud.firestore {
       allow read: if isUser();
       allow write: if isAdmin();
     }
+    // Photo/PDF of each purchase bill, kept small enough for one document.
+    match /purchaseFiles/{id} {
+      allow read: if isUser();
+      allow write: if isAdmin();
+    }
   }
 }
