@@ -1,0 +1,73 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Firestore Rules</title><meta name="robots" content="noindex">
+<style>body{font-family:system-ui,sans-serif;margin:0;background:#f4f7ef;color:#16301c}main{max-width:900px;margin:0 auto;padding:16px}
+button{font:inherit;font-size:1.2rem;font-weight:700;padding:14px 22px;border:0;border-radius:12px;background:#1d5e2c;color:#fff;cursor:pointer;width:100%}
+pre{background:#fff;border:1px solid #dfe7d4;border-radius:10px;padding:12px;overflow:auto;font-size:13px;max-height:55vh}ol{line-height:1.7}#ok{color:#1d5e2c;font-weight:700;min-height:1.4em}</style></head>
+<body><main><h2>Firebase Rules कॉपी करें</h2>
+<ol><li>नीचे हरा बटन दबाएँ (सब कॉपी हो जाएगा)</li>
+<li>Firebase के Rules वाले डिब्बे के अंदर क्लिक करें, <b>Ctrl + A</b> दबाएँ, फिर <b>Delete</b> (पुराना सब हट जाए, डिब्बा पूरा खाली हो)</li>
+<li><b>Ctrl + V</b> दबाकर पेस्ट करें, फिर <b>Publish</b></li></ol>
+<button id="c">📋 पूरे Rules कॉपी करें</button><p id="ok"></p>
+<pre id="r">rules_version = &#x27;2&#x27;;
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function isUser() { return signedIn() &amp;&amp; exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function role() { return profile().data.role; }
+    function isAdmin() { return isUser() &amp;&amp; role() == &#x27;admin&#x27;; }
+    function canBill() { return isUser() &amp;&amp; role() in [&#x27;admin&#x27;, &#x27;staff&#x27;]; }
+
+    match /meta/owner {
+      allow get: if true;
+      allow create: if signedIn()
+        &amp;&amp; !exists(/databases/$(database)/documents/meta/owner)
+        &amp;&amp; request.resource.data.uid == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      allow read: if isUser();
+      allow create: if isAdmin()
+        || (signedIn() &amp;&amp; uid == request.auth.uid
+            &amp;&amp; request.resource.data.role == &#x27;admin&#x27;
+            &amp;&amp; get(/databases/$(database)/documents/meta/owner).data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /settings/{id} {
+      allow read: if isUser();
+      allow write: if isAdmin()
+        || (signedIn() &amp;&amp; id == &#x27;shop&#x27;
+            &amp;&amp; get(/databases/$(database)/documents/meta/owner).data.uid == request.auth.uid);
+    }
+    match /products/{id} {
+      allow read: if isUser();
+      allow create, update: if canBill();
+      allow delete: if isAdmin();
+    }
+    match /customers/{id} {
+      allow read: if isUser();
+      allow create, update: if canBill();
+      allow delete: if isAdmin();
+    }
+    match /bills/{id} {
+      allow read: if isUser();
+      allow create, update: if canBill();
+      allow delete: if isAdmin();
+    }
+    match /purchases/{id} {
+      allow read: if isUser();
+      allow write: if isAdmin();
+    }
+    match /purchaseFiles/{id} {
+      allow read: if isUser();
+      allow write: if isAdmin();
+    }
+  }
+}
+</pre></main>
+<script>
+document.getElementById("c").onclick=async()=>{const t=document.getElementById("r").textContent;
+try{await navigator.clipboard.writeText(t);}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();}
+document.getElementById("ok").textContent="✓ कॉपी हो गया ("+t.split("\n").length+" लाइनें)। अब Firebase में Ctrl+A, Delete, फिर Ctrl+V।";};
+</script></body></html>
