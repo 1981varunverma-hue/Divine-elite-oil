@@ -1,0 +1,26 @@
+{
+  "name": "divine-elite-oil-billing",
+  "productName": "Divine Elite Oil Billing",
+  "version": "1.0.0",
+  "description": "Divine Elite Oil Billing",
+  "author": "Divine Elite Oil",
+  "main": "main.js",
+  "scripts": { "dist": "electron-builder --win nsis --x64 --publish never" },
+  "devDependencies": { "electron": "31.7.7", "electron-builder": "24.13.3" },
+  "build": {
+    "appId": "in.divineeliteoil.billing",
+    "productName": "Divine Elite Oil Billing",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["main.js", "offline.html", "build/icon.png"],
+    "win": { "target": "nsis", "icon": "build/icon.ico" },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Divine Elite Oil Billing",
+      "artifactName": "DivineEliteOilBilling-Setup.exe"
+    }
+  }
+}

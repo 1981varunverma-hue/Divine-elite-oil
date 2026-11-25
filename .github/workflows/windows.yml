@@ -1,0 +1,35 @@
+name: Windows app
+on:
+  push:
+    branches: [main]
+    paths: ["windows-shell/**", ".github/workflows/windows.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build installer
+        working-directory: windows-shell
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          npm install --no-audit --no-fund
+          npm run dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DivineEliteOilBilling-Setup
+          path: windows-shell/dist/DivineEliteOilBilling-Setup.exe
+      - name: Publish download link
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows-latest
+          name: Divine Elite Oil Billing for Windows
+          body: "Windows 10/11 setup. Download DivineEliteOilBilling-Setup.exe on the laptop and run it."
+          files: windows-shell/dist/DivineEliteOilBilling-Setup.exe
+          make_latest: false
